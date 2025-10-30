@@ -412,10 +412,10 @@ This kills Gazebo-related processes.
 
 
 
-```html
-<img src="README_assets/camera_raw_image_subscriber_ss.png.png" width="800"/>
-<img src="README_assets/forklift_gui_controller_ss.png" width="512"/>
-```
+![Forklift RL training](README_assets/forkliftEnv_training_ss.png)
+
+![Forklift GUI controller](README_assets/forklift_gui_controller_ss.png)
+
 
 ---
 
