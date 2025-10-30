@@ -1,0 +1,14 @@
+.vscode/
+__pycache__/
+build/
+install/
+log/
+*.pkl
+logs_tensorboard/
+*.zip
+sb3_tensorboard/
+.pytest_cache
+log_*
+# *log*
+# !logging/
+# !logger.py
