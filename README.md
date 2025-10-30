@@ -410,10 +410,10 @@ This kills Gazebo-related processes.
 
 ## Screenshots
 
-If you have the images in `README_assets/`, you can embed them:
+
 
 ```html
-<img src="README_assets/forkliftEnv_training_ss.png" width="800"/>
+<img src="README_assets/camera_raw_image_subscriber_ss.png.png" width="800"/>
 <img src="README_assets/forklift_gui_controller_ss.png" width="512"/>
 ```
 
