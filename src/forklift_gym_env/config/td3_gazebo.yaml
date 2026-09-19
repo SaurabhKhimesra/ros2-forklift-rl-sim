@@ -1,0 +1,118 @@
+# TD3 in Gazebo (physics-accurate, ~200x slower per step).
+#
+# Same task, same rewards, same network as td3_kinematic.yaml - only the
+# backend changes. Tune on the kinematic config first, then bring the numbers
+# here. Needs a sourced ROS 2 Humble workspace and a running gazebo:
+#
+#   make sim          # terminal 1: gazebo + forklift + pallet
+#   make train-gazebo # terminal 2
+
+run:
+  name: forklift
+  seed: 42
+  device: auto          # auto | cpu | cuda
+  output_dir: runs
+
+env:
+  backend: gazebo
+  max_episode_steps: 250
+  control_hz: 10.0
+
+  # The observation vector is built from exactly these features, in this order,
+  # and the observation_space is derived from the same list - they cannot drift.
+  observation:
+    - goal_vector_body    # pallet position in the robot's own frame (2)
+    - goal_distance       # (1)
+    - heading_error       # as (sin, cos), continuous across +/-pi (2)
+    - velocity            # current (linear, angular) (2)
+    - last_action         # lets the policy reason about its own smoothness (2)
+  normalize_observations: true
+
+  robot:
+    max_linear_speed: 1.0
+    max_angular_speed: 1.0
+    max_linear_accel: 2.0
+    max_angular_accel: 4.0
+    allow_reverse: true
+    footprint_radius: 0.6
+
+  goal:
+    randomize: true
+    distance_range: [2.0, 8.0]
+    bearing_range_deg: [-180.0, 180.0]
+    position_tolerance: 0.6
+    require_heading: false
+    curriculum:
+      enabled: true
+      initial_distance: 2.5
+      final_distance: 8.0
+      initial_bearing_deg: 60.0
+      final_bearing_deg: 180.0
+      success_rate_to_advance: 0.7
+      window: 50
+      step_fraction: 0.15
+
+  # Weighted reward terms; a weight of 0.0 switches a term off entirely.
+  reward:
+    progress: 1.0            # potential-based shaping on distance
+    heading: 0.05            # potential-based shaping on heading error
+    success: 100.0
+    collision: -50.0
+    time: -0.12            # must out-cost shaping idle income, see RewardConfig
+    action_magnitude: -0.01
+    action_smoothness: -0.05
+    reverse: 0.0
+
+  gazebo:
+    world_file: collision_detection.world
+    robot_entity: forklift_bot
+    pallet_entity: pallet
+    pallet_model: pallet/model.sdf
+    spawn_z: 0.30
+    controllers: [joint_broad, fork_joint_controller]
+    collision_links:
+      - chassis_bottom_link
+      - chassis_top_link
+      - fork_base_link
+      - left_fork_link
+      - right_fork_link
+      - left_front_wheel_link
+      - right_front_wheel_link
+      - back_wheel_link
+    launch_gui: false        # gzclient costs real frame time; leave it off to train
+    gazebo_verbose: false
+    service_timeout_s: 15.0
+    settle_steps: 2
+
+  terminate_on_collision: true
+
+algo:
+  name: td3
+  actor_hidden: [128, 128]
+  critic_hidden: [128, 128]
+  actor_lr: 0.0003
+  critic_lr: 0.0003
+  gamma: 0.99
+  tau: 0.005
+  batch_size: 256
+  buffer_size: 300000
+  exploration_noise: 0.3
+  exploration_noise_final: 0.05
+  target_policy_noise: 0.2
+  target_noise_clip: 0.5
+  policy_delay: 2
+  max_grad_norm: 10.0
+  use_her: false
+
+train:
+  # Far fewer environment steps than the kinematic config, and more gradient
+  # steps per environment step: in Gazebo the simulator is the bottleneck, so
+  # squeeze more learning out of every transition you pay for.
+  total_steps: 40000
+  warmup_steps: 2000
+  updates_per_step: 2.0
+  update_every: 20
+  eval_every: 4000
+  eval_episodes: 5
+  checkpoint_every: 4000
+  log_every: 200

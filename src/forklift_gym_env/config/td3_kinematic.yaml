@@ -1,0 +1,98 @@
+# TD3 on the fast, ROS-free kinematic simulator.
+#
+# This is the config to start from. It trains to a high success rate in a couple
+# of minutes on a laptop CPU, which makes it the right place to iterate on
+# rewards and observations before spending Gazebo wall-clock on them.
+#
+#   forklift train -c td3_kinematic.yaml
+
+run:
+  name: forklift
+  seed: 42
+  device: auto          # auto | cpu | cuda
+  output_dir: runs
+
+env:
+  backend: kinematic
+  max_episode_steps: 250
+  control_hz: 10.0
+
+  # The observation vector is built from exactly these features, in this order,
+  # and the observation_space is derived from the same list - they cannot drift.
+  observation:
+    - goal_vector_body    # pallet position in the robot's own frame (2)
+    - goal_distance       # (1)
+    - heading_error       # as (sin, cos), continuous across +/-pi (2)
+    - velocity            # current (linear, angular) (2)
+    - last_action         # lets the policy reason about its own smoothness (2)
+  normalize_observations: true
+
+  robot:
+    max_linear_speed: 1.0
+    max_angular_speed: 1.0
+    max_linear_accel: 2.0
+    max_angular_accel: 4.0
+    allow_reverse: true
+    footprint_radius: 0.6
+
+  goal:
+    randomize: true
+    distance_range: [2.0, 8.0]
+    bearing_range_deg: [-180.0, 180.0]
+    position_tolerance: 0.6
+    require_heading: false
+    curriculum:
+      enabled: true
+      initial_distance: 2.5
+      final_distance: 8.0
+      initial_bearing_deg: 60.0
+      final_bearing_deg: 180.0
+      success_rate_to_advance: 0.7
+      window: 50
+      step_fraction: 0.15
+
+  # Weighted reward terms; a weight of 0.0 switches a term off entirely.
+  reward:
+    progress: 1.0            # potential-based shaping on distance
+    heading: 0.05            # potential-based shaping on heading error
+    success: 100.0
+    collision: -50.0
+    time: -0.12            # must out-cost shaping idle income, see RewardConfig
+    action_magnitude: -0.01
+    action_smoothness: -0.05
+    reverse: 0.0
+
+  kinematic:
+    world_bounds: [12.0, 12.0]
+    velocity_noise_std: 0.02
+    obstacles: []
+
+  terminate_on_collision: true
+
+algo:
+  name: td3
+  actor_hidden: [128, 128]
+  critic_hidden: [128, 128]
+  actor_lr: 0.0003
+  critic_lr: 0.0003
+  gamma: 0.99
+  tau: 0.005
+  batch_size: 256
+  buffer_size: 300000
+  exploration_noise: 0.3
+  exploration_noise_final: 0.05
+  target_policy_noise: 0.2
+  target_noise_clip: 0.5
+  policy_delay: 2
+  max_grad_norm: 10.0
+  use_her: false
+
+train:
+  total_steps: 60000
+  warmup_steps: 5000
+  updates_per_step: 1.0
+  update_every: 50
+  eval_every: 2500
+  eval_episodes: 20
+  checkpoint_every: 20000
+  log_every: 2500
