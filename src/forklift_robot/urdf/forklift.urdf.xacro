@@ -442,7 +442,6 @@
     <xacro:include filename="ros_gazebo_collision_detection_plugin.xacro"/>
     
     <!-- Setup Gazebo Gravity Compensation Plugin for the forklift robot -->
-    <!-- <xacro:include filename="gazebo_gravity_compensation_plugin.xacro"/> -->
     
 
 </robot>

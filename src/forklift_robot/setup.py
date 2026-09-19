@@ -1,40 +1,54 @@
-from setuptools import setup
-# Imports below are added by me
-import os
-from glob import glob
-from setuptools import find_packages
+"""Package definition for the forklift_robot description package.
 
-package_name = 'forklift_robot'
+Note ``find_packages()`` and the sub-directory layout under ``share/``: the
+previous version globbed ``urdf/*``, ``rviz/*`` and ``config/*`` all into the
+*same* flat share directory, so a ``forklift.urdf.xacro`` that ``<xacro:include>``s
+``lidar.xacro`` only resolved by accident of them landing side by side.
+"""
+
+from pathlib import Path
+
+from setuptools import find_packages, setup
+
+PACKAGE = "forklift_robot"
+HERE = Path(__file__).parent
+
+
+def data_tree(source: str) -> list[tuple[str, list[str]]]:
+    root = HERE / source
+    if not root.is_dir():
+        return []
+    return [
+        (
+            str(Path("share") / PACKAGE / d.relative_to(HERE)),
+            sorted(str(p.relative_to(HERE)) for p in d.iterdir() if p.is_file()),
+        )
+        for d in sorted({p.parent for p in root.rglob("*") if p.is_file()})
+    ]
+
 
 setup(
-    name=package_name,
-    version='0.0.0',
-    packages=[package_name],
+    name=PACKAGE,
+    version="1.0.0",
+    packages=find_packages(),
     data_files=[
-        ('share/ament_index/resource_index/packages',
-            ['resource/' + package_name]),
-        ('share/' + package_name, ['package.xml']),
-        # ones below are added by me:
-        (os.path.join('share', package_name), glob('launch/*launch.[pxy][yma]*')), # includes files inside /launch directory
-        (os.path.join('share', package_name), glob('urdf/*')), # includes files inside /urdf directory
-        (os.path.join('share', package_name), glob('rviz/*')), # includes files inside /rviz directory
-        (os.path.join('share', package_name), glob('config/*')), # includes files inside /config directory
+        ("share/ament_index/resource_index/packages", [f"resource/{PACKAGE}"]),
+        (f"share/{PACKAGE}", ["package.xml"]),
+        *data_tree("launch"),
+        *data_tree("urdf"),
+        *data_tree("rviz"),
+        *data_tree("config"),
     ],
-    install_requires=['setuptools'],
+    install_requires=["setuptools"],
     zip_safe=True,
-    maintainer='saurabh',
-    maintainer_email='saurabhkhimesra99@gmail.com',
-    description='TODO: Package description',
-    license='TODO: License declaration',
-    tests_require=['pytest'],
+    maintainer="Saurabh Khimesra",
+    maintainer_email="learningkhimesra@gmail.com",
+    description="URDF description, ros2_control configuration and launch files for the forklift.",
+    license="Apache-2.0",
+    tests_require=["pytest"],
     entry_points={
-        'console_scripts': [
-            'fork_controller_publisher = forklift_robot.fork_controller_publisher:main',
-            'camera_raw_image_subscriber = forklift_robot.camera_raw_image_subscriber:main',
-            'depth_camera_raw_image_subscriber = forklift_robot.depth_camera_raw_image_subscriber:main',
-            'lidar_scan_subscriber = forklift_robot.lidar_scan_subscriber:main',
-            'odom_subscriber = forklift_robot.odom_subscriber:main',
-            'diff_cont_cmd_vel_unstamped_publisher = forklift_robot.diff_cont_cmd_vel_unstamped_publisher:main'
+        "console_scripts": [
+            f"teleop = {PACKAGE}.teleop:main",
         ],
     },
 )

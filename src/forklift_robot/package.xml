@@ -2,42 +2,31 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>forklift_robot</name>
-  <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="cangozpinar@gmail.com">cangozpi</maintainer>
-  <license>TODO: License declaration</license>
+  <version>1.0.0</version>
+  <description>
+    URDF/xacro description of the simulated forklift, its ros2_control configuration,
+    sensor definitions (RGB camera, depth camera, LiDAR, contact sensors) and the
+    launch file that brings the whole simulation up.
+  </description>
+  <maintainer email="learningkhimesra@gmail.com">Saurabh Khimesra</maintainer>
+  <license>Apache-2.0</license>
 
-  <test_depend>ament_copyright</test_depend>
-  <test_depend>ament_flake8</test_depend>
-  <test_depend>ament_pep257</test_depend>
-  <test_depend>python3-pytest</test_depend>
-
-  <!-- Added by me -->
-  <exec_depend>ros2launch</exec_depend>
   <exec_depend>rclpy</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>std_msgs</exec_depend>
-  <!-- TODO: add Ros2-Control package, required gazebo plugins (such as libgazebo_ros2_control.so, gazebo camera plugins, e.t.c) and maybe rqt-image-view package
-    # install ros2_control packages for gazebo
-    sudo apt install ros-humble-gazebo-ros2-control
+  <exec_depend>xacro</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>gazebo_ros</exec_depend>
+  <exec_depend>gazebo_ros2_control</exec_depend>
+  <exec_depend>controller_manager</exec_depend>
+  <exec_depend>diff_drive_controller</exec_depend>
+  <exec_depend>joint_state_broadcaster</exec_depend>
+  <exec_depend>position_controllers</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
 
-    # install ros2_control
-    sudo apt install ros-humble-ros2-control ros-humble-ros2-controllers
-
-    # Download image_transport package
-    sudo apt install ros-humble-image-transport-plugins
-    # Download rqt_image_view package
-    sudo apt install ros-humble-rqt-image-view 
-    
-    add something like the following packages too maybe not sure I took it from internet, I did not check if I used the following packages
-    <exec_depend>rclpy</exec_depend>
-    <exec_depend>sensor_msgs_py</exec_depend>
-    <exec_depend>python3-numpy</exec_depend>
-    <exec_depend>sensor_msgs</exec_depend>
-    <exec_depend>std_msgs</exec_depend>
-
-   -->
-
-  <!-- -->
+  <test_depend>python3-pytest</test_depend>
 
   <export>
     <build_type>ament_python</build_type>
