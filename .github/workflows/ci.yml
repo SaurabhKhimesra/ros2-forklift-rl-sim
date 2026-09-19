@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The whole point of splitting the simulator out behind a backend interface:
+  # the environment, rewards, observations, buffers and agent are all testable
+  # with no ROS and no Gazebo, so CI runs in under a minute on a stock runner.
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - name: Lint
+        run: |
+          ruff check src
+          ruff format --check src
+      - name: Test
+        run: pytest --cov=forklift_gym_env --cov-report=term-missing
+      - name: Every shipped config must load and validate
+        run: |
+          for f in src/forklift_gym_env/config/*.yaml; do
+            echo "-- $f"
+            python -m forklift_gym_env config -c "$f" > /dev/null
+          done
+      - name: Smoke-train end to end
+        run: |
+          python -m forklift_gym_env train -c td3_kinematic.yaml \
+            --set train.total_steps=3000 --set train.warmup_steps=500 \
+            --set train.eval_every=1500 --set train.eval_episodes=3 \
+            --run-dir /tmp/ci-run
+          test -f /tmp/ci-run/final.pt
+          python -m forklift_gym_env eval -c /tmp/ci-run/config.yaml /tmp/ci-run/final.pt -n 3
+
+  # Builds the ROS 2 packages. Kept separate so a ROS outage never blocks a
+  # pure-python PR.
+  colcon:
+    runs-on: ubuntu-22.04
+    container: osrf/ros:humble-desktop
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          apt-get update
+          rosdep update --rosdistro humble || true
+          rosdep install --from-paths src --ignore-src -y --rosdistro humble || true
+          pip install -r requirements.txt
+      - name: colcon build
+        shell: bash
+        run: |
+          source /opt/ros/humble/setup.bash
+          colcon build --symlink-install --event-handlers console_direct+
+      - name: Configs are installed to the share directory
+        shell: bash
+        run: |
+          source install/setup.bash
+          python3 -c "
+          from forklift_gym_env.paths import find_config
+          print(find_config('td3_gazebo.yaml'))
+          "
