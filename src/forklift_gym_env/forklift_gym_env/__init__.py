@@ -1,9 +1,7 @@
-from gym.envs.registration import register
+"""Deep RL forklift simulation: a ROS 2 / Gazebo Gymnasium environment plus a
+fast ROS-free surrogate for rapid iteration.
+"""
 
+__version__ = "1.0.0"
 
-# ForkliftEnv which supports both gym.Env and gym.GoalEnv
-register(
-    id='forklift_gym_env/ForkliftWorld-v0',
-    entry_point='forklift_gym_env.envs.Forklift_env:ForkliftEnv',
-    # max_episode_steps=300, # TODO: set this maybe
-)
+__all__ = ["__version__"]
