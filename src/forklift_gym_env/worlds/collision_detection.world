@@ -62,11 +62,15 @@
     </plugin>
 
 
-    <!-- Speed up simulation time -->
+    <!-- real_time_update_rate 0 = step physics as fast as the CPU allows.
+         The environment paces itself off /clock rather than wall time, so
+         uncapping this is free training throughput: with the GUI off it gives
+         a real-time factor well above 1. Set it back to 1000 if you want the
+         simulation to play at real speed for a demo. -->
     <physics name='default_physics' default='0' type='ode'>
-      <max_step_size>0.001</max_step_size>
+      <max_step_size>0.002</max_step_size>
       <real_time_factor>1</real_time_factor>
-      <real_time_update_rate>1000</real_time_update_rate> <!-- For instance, (by changing this to 2000) 1 second in real-time will be executed as 2000 ms in simulation. -->
+      <real_time_update_rate>0</real_time_update_rate>
     </physics>
 
 
