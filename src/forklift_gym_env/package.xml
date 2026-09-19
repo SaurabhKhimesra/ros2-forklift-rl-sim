@@ -2,14 +2,34 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>forklift_gym_env</name>
-  <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="cangozpinar@gmail.com">cangozpi</maintainer>
-  <license>TODO: License declaration</license>
+  <version>1.0.0</version>
+  <description>
+    Deep reinforcement learning forklift simulation. Provides a Gymnasium environment
+    backed either by ROS 2 / Gazebo or by a fast ROS-free kinematic simulator, together
+    with TD3/DDPG agents and Hindsight Experience Replay.
+  </description>
+  <maintainer email="learningkhimesra@gmail.com">Saurabh Khimesra</maintainer>
+  <license>Apache-2.0</license>
 
-  <test_depend>ament_copyright</test_depend>
-  <test_depend>ament_flake8</test_depend>
-  <test_depend>ament_pep257</test_depend>
+  <!-- The previous package.xml declared no dependencies at all, so `rosdep install`
+       was a no-op and a fresh machine failed at import time instead of at setup time. -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>gazebo_msgs</exec_depend>
+  <exec_depend>gazebo_ros</exec_depend>
+  <exec_depend>gazebo_ros_pkgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>std_srvs</exec_depend>
+  <exec_depend>rosgraph_msgs</exec_depend>
+  <exec_depend>controller_manager</exec_depend>
+  <exec_depend>ros2_control</exec_depend>
+  <exec_depend>ros2_controllers</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>xacro</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>forklift_robot</exec_depend>
+
   <test_depend>python3-pytest</test_depend>
 
   <export>
