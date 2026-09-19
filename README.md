@@ -1,429 +1,471 @@
-# Deep Reinforcement Learning Forklift Simulation
+# Deep RL Forklift Simulation
 
-This repository provides a **ROS2 + Gazebo** simulation for training **Deep Reinforcement Learning (DRL)** agents to control a simulated **forklift** — for example, to autonomously navigate to and align with a pallet.
+Training a forklift to drive up to a pallet and square up with it, in **ROS 2 +
+Gazebo** — with a fast ROS-free simulator alongside it so the reward function can
+be iterated on in minutes instead of days.
 
-You get:
+<p align="center">
+  <img src="docs/figures/rollout.gif" width="420" alt="Trained TD3 policy driving to a randomly placed pallet">
+</p>
 
-- ✅ A complete **forklift robot model** (URDF, ROS2 controllers, sensors)
-- ✅ A **Gazebo/ROS2-backed Gym environment** (`ForkliftEnv`)
-- ✅ Multiple **RL algorithms** (custom PyTorch + Stable Baselines3)
-- ✅ **Config-based** experiment setup (reward, observations, actions, step duration)
-- ✅ A **manual GUI controller** to test/tune the forklift without training
+```bash
+pip install -r requirements-dev.txt
+export PYTHONPATH=$PWD/src/forklift_gym_env
+python -m forklift_gym_env train -c td3_kinematic.yaml
+```
 
-This repo is designed as a **research / experimentation playground** so you can swap observation, reward, or action strategies without rewriting the environment.
+That is the whole setup for the fast path. No ROS, no Gazebo, no colcon — it
+trains to a 100% success rate in about five minutes on a laptop CPU. The Gazebo
+path is the same command with `-c td3_gazebo.yaml` once the workspace is built.
 
 ---
 
-## 🗂️ Table of Contents
+## Contents
 
-1. [Features](#features)
-2. [Repository Structure](#repository-structure)
-3. [Requirements](#requirements)
-4. [Installation](#installation)
-5. [Build & Run](#build--run)
-6. [Configuration](#configuration)
-7. [Training & Testing](#training--testing)
-8. [Logging & TensorBoard](#logging--tensorboard)
-9. [Sensors](#sensors)
-10. [Available RL Algorithms](#available-rl-algorithms)
-11. [Related Simpler Repo](#related-simpler-repo)
-12. [Makefile Quick Reference](#makefile-quick-reference)
-13. [Killing Stuck Gazebo Processes](#killing-stuck-gazebo-processes)
-14. [Notes / Limitations](#notes--limitations)
-15. [Screenshots](#screenshots)
-16. [License / Credits](#license--credits)
+- [What's here](#whats-here)
+- [Results](#results)
+- [The simulation itself](#the-simulation-itself)
+- [Why there are two simulators](#why-there-are-two-simulators)
+- [Quick start](#quick-start)
+- [The Gazebo path](#the-gazebo-path)
+- [Configuration](#configuration)
+- [Repository layout](#repository-layout)
+- [Testing](#testing)
+- [Notes on the rewrite](#notes-on-the-rewrite)
+- [Credits](#credits)
+- [License](#license)
 
 ---
 
-## Features
+## What's here
 
-### Forklift Robot Model
-- URDF / xacro forklift model
-- ROS2 controllers for steering and fork actuation
-- Sensors: **RGB camera**, **depth camera**, **LiDAR**, **collision-detection plugin**
+**The robot.** A URDF/xacro forklift with a differential drive, a liftable fork,
+an RGB camera, a depth camera, LiDAR and per-link contact sensors, driven through
+`ros2_control`, plus a custom Gazebo collision-detection plugin.
 
-### Gazebo + ROS2 → Gym Environment (`ForkliftEnv`)
-- Spawns forklift + pallet in a world
-- Default task: **“navigate to pallet”**
-- Supports both **`gym.Env`** and **`gym.GoalEnv`**
-- Simulation controller: **pause/unpause**, **respawn**, **move entities**
-- Modular **actions / observations / rewards** (Strategy + Factory patterns)
+**The environment.** A Gymnasium `Env` with pluggable observations, composable
+reward terms and a goal curriculum — backed either by Gazebo or by a fast
+kinematic simulator, chosen by one line of config.
 
-### Deep RL Training
-- Custom PyTorch: **DDPG**, **TD3**, **DDPG+HER** (on branch)
-- SB3-based: **PPO**, **DDPG**, **TQC**, **HER** via `train_sb3.py`
-- All **driven by YAML configs**
+**The learning.** TD3 and DDPG in PyTorch, a uniform replay buffer and a real
+Hindsight Experience Replay buffer, with TensorBoard and CSV logging,
+checkpointing and deterministic evaluation.
 
-### Experiment Tooling
-- TensorBoard logging
-- Makefile shortcuts for **build / run / train / tensorboard**
-- Basic pytests
+**Two tasks.**
 
-### Manual Control
-- GUI to manually drive the forklift
-- Good for testing controllers and sensor setup
+| | Goal | Tolerance |
+|---|---|---|
+| **point-goal** | reach the pallet | 0.6 m |
+| **alignment** | reach it *and* match its heading | 0.5 m, 20° |
+
+The second one is the forklift problem: forks only go in from one side, so
+arriving at the pallet facing the wrong way is not a success.
 
 ---
 
-## Repository Structure
+## Results
 
-```text
-src/
-  forklift_robot/                 # ROS2 package for the forklift
-    urdf/                         # forklift.urdf.xacro + sensor xacros
-    forklift_robot/               # ROS pubs/subs to controllers & sensors
-    config/                       # ROS2 controller definitions
-    launch/                       # spawn in Gazebo / RViz
-  ros_gazebo_plugins/
-    src/ros_collision_detection_plugin.cpp
-                                  # custom Gazebo plugin for collision detection
-  forklift_gym_env/               # RL, env, training, utilities
-    forklift_gym_env/
-      config/                     # YAML configs (env + RL hyperparams)
-      rl/                         # RL algorithms
-        DDPG/                     # custom PyTorch DDPG/TD3
-        sb3_HER/                  # SB3 trainer (PPO, DDPG, TQC, HER)
-      envs/
-        controller_publishers/    # publishes actions to forklift controllers
-        sensor_subscribers/       # subscribes to sensor / state topics
-        forklift_env_Actions_utils.py
-        forklift_env_observations_utils.py
-        forklift_env_Rewards_utils.py
-        simulation_controller.py  # pause/resume, spawn, teleport models
-        utils.py                  # load models, export gazebo env, enums
-        ForkliftEnv.py            # the Gym environment
-      gui_controller/             # manual control panel
-      logging/                    # tensorboard + file logger
-      test/                       # some pytests
-models/                           # non-agent models (e.g. pallet)
-worlds/                           # Gazebo world files
-Makefile                          # build/run/train/tensorboard/kill
+All figures below are from runs in this repository and can be reproduced with
+the commands shown. Single seed unless stated — enough to show the mechanisms
+work, not enough to rank algorithms; see the caveat under the comparison.
+
+### The trained policy generalises over pallet placement
+
+![Evaluation rollouts](docs/figures/trajectories.png)
+
+24 evaluation episodes, pallet sampled uniformly over a 2–8 m annulus at any
+bearing, robot starting at the origin with a random heading. **100% success,
+0 collisions, mean final distance 0.20 m.**
+
+```bash
+python -m forklift_gym_env eval -c runs/<run>/config.yaml runs/<run>/best.pt \
+    -n 24 --plot trajectories.png --gif rollout.gif
 ```
 
-**Mental model:**
+This is the figure that would have been impossible before: the previous version
+pinned the pallet at a single fixed coordinate for every episode, so there was
+nothing for a policy to generalise over.
 
-- `src/forklift_robot/` → defines **what** the robot is (URDF, controllers, sensors)  
-- `src/forklift_gym_env/` → defines **how** we train & interact with it (Gym env + RL)
+### TD3 vs DDPG on the alignment task
+
+![TD3 vs DDPG](docs/figures/td3_vs_ddpg_align.png)
+
+Identical environment, network, buffer and schedule; the only differences are
+TD3's clipped double-Q, target policy smoothing and delayed actor update.
+
+| | first 100% eval | final success | final distance |
+|---|---|---|---|
+| DDPG | 30,000 steps | 100% | 0.45 m |
+| TD3 | 47,500 steps | 100% | 0.35 m |
+
+On this task DDPG gets there first and TD3 ends more precisely. That is not the
+textbook result, and with **one seed per algorithm it is not evidence of
+anything** — the honest summary is that this task is easy enough for both.
+Re-run with `--set run.seed=N` across several seeds before drawing a conclusion.
+
+```bash
+python -m forklift_gym_env train -c td3_align_kinematic.yaml
+python -m forklift_gym_env train -c ddpg_align_kinematic.yaml
+python -m forklift_gym_env report runs/<td3> runs/<ddpg> --labels TD3 DDPG -o compare.png
+```
+
+### A reward function that pays the agent to stand still
+
+![Reward shaping](docs/figures/reward_shaping.png)
+
+Potential-based shaping adds `γ·Φ(s′) − Φ(s)`. With `Φ = −distance` and a
+**stationary** robot that is not zero — it is `(1 − γ)·distance`, which is
+*positive*. A distant agent earns a small income every step for doing nothing.
+
+The bars are hand-written policies, no learning involved: a do-nothing policy
+and a proportional controller, run under two reward weightings. Under the broken
+one, **doing nothing scores +36**. Driving still scores higher, so idling is not
+the global optimum — but it is a positive-return local optimum sitting right
+where an agent starts, before it has ever reached the pallet and discovered the
+success bonus.
+
+Does it actually break training? On *this* task, no — run both weightings for
+25,000 steps and they both reach 100%, with both dipping partway through. So the
+guard below is a safeguard against a reward function that is provably wrong, not
+the rescue of a run that was failing. Saying otherwise would be easy and would
+not be true; `scripts/reward_shaping_demo.py --steps 25000` reproduces the
+inconclusive comparison too.
+
+The config loader now refuses any weighting where the per-step cost does not
+exceed the maximum idle income, and states the threshold:
+
+```
+ConfigError: reward.time (-0.01) does not out-cost potential-based shaping: a
+stationary agent 8 m from the goal still earns +0.1600/step at gamma=0.98, so
+idling beats driving. Set reward.time steeper than -0.1600, or raise algo.gamma.
+```
+
+```bash
+python scripts/reward_shaping_demo.py     # reproduces the figure
+```
+
+### Hindsight replay on a sparse reward
+
+![HER](docs/figures/her_vs_sparse.png)
+
+Every shaping term switched off — the agent is paid only for arriving. Same
+observation content on both sides (robot pose, velocity, last action, goal); the
+only difference is whether failed episodes get relabelled with the state the
+robot actually reached.
+
+| | final success | final distance | episode length |
+|---|---|---|---|
+| TD3 + HER | **90%** | 0.63 m | 74 |
+| TD3 alone | 20% | 4.01 m | 198 |
+
+Without relabelling the agent occasionally stumbles into a near goal during
+warm-up, learns a little, then loses it — the classic sparse-reward failure. The
+previous version of this repository shipped a buffer whose docstring cited the
+HER paper and whose relabelling method copied the transitions across unchanged.
 
 ---
 
-## Requirements
+## The simulation itself
 
-Developed/tested on:
+Screenshots from the Gazebo side of the project — the robot, its controllers and
+its sensor stack, running under ROS 2 Humble.
 
-- **OS:** Ubuntu **22.04.3**
-- **ROS2:** **Humble**
-- **Gazebo:** **11.10.2**
-  - `gzclient` **11.10.2**
-  - `gzserver` **11.10.2**
-- **Python:** **3.10.12**
+> These predate the v1.0 rewrite: they document the robot description, the
+> controllers and the sensor pipeline, all of which are carried over unchanged.
+> They are not screenshots of the rewritten backend — see the status note under
+> [The Gazebo path](#the-gazebo-path).
 
-Install packages from:
+<p align="center">
+  <img src="docs/figures/simulation/gazebo_forklift_and_pallet.png" width="760"
+       alt="Gazebo with the forklift and a pallet; controller_manager loading joint_broad and fork_joint_controller">
+</p>
 
-- `ros2_pkg_requirements.txt` *(ROS2-side deps)*
-- `requirements.txt` *(Python deps)*
+The forklift and a pallet in the `collision_detection` world, with
+`controller_manager` bringing up `joint_broad` and `fork_joint_controller`.
 
-> These files list everything that was on the original dev machine — you may not need every package.
+<p align="center">
+  <img src="docs/figures/simulation/rviz_lidar_and_depth.jpeg" width="620"
+       alt="RViz showing the LaserScan point cloud and the depth camera image">
+  <img src="docs/figures/simulation/depth_camera_and_lidar_rays.jpeg" width="620"
+       alt="Gazebo LiDAR rays alongside the raw depth camera image">
+</p>
+
+LiDAR and depth camera. Left: RViz with the `/scan` point cloud and the depth
+image panel. Right: the LiDAR rays as Gazebo casts them, next to the raw depth
+frame the subscriber receives.
+
+<p align="center">
+  <img src="docs/figures/simulation/camera_rgb.png" width="620"
+       alt="The forklift's RGB camera feed">
+</p>
+
+The RGB camera. Swap it for the depth camera by commenting the include in
+`src/forklift_robot/urdf/forklift.urdf.xacro`:
+
+```xml
+<xacro:include filename="lidar.xacro"/>
+<!-- <xacro:include filename="camera.xacro"/> -->
+<xacro:include filename="depth_camera.xacro"/>
+```
+
+<details>
+<summary>The Tk GUI controller this replaced</summary>
+
+<p align="center">
+  <img src="docs/figures/simulation/legacy_gui_controller.png" width="420"
+       alt="The old Tk GUI controller window">
+</p>
+
+Manual driving used to go through a Tk window, which needed a display and
+duplicated the publisher logic already in the environment. It is now
+`make teleop` — a keyboard controller that works over ssh and in the container.
+
+</details>
 
 ---
 
-## Installation
+## Why there are two simulators
 
-### Docker (Recommended)
+Gazebo is the right tool for validating contact, sensors and controller
+dynamics. It is the wrong tool for iterating on a reward function: a change you
+want to evaluate over 60,000 environment steps costs hours of wall clock, so in
+practice you evaluate it over 200 steps and guess.
 
-```bash
-# 1. Build the Docker image
-docker build . -t forklift_image
+So the simulator sits behind an interface:
 
-# 2. Run the container with GUI support
-xhost +local:*
-docker run -it   -v ~/Desktop/Docker_shared:/Docker_shared   -w /Docker_shared   --privileged --net=host   -e DISPLAY=${DISPLAY}   --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw"   --gpus all   --name forklift   forklift_image bash
-
-# 3. Inside the container: install ROS2 packages
-xargs sudo apt -y install < ros2_pkg_requirements.txt
-
-# 4. Inside the container: install Python packages
-pip install -r requirements.txt
-
-# (optional helper)
-make install_requirements
-
-# when you’re done with GUI
-xhost -local:*
+```
+ForkliftEnv  ──►  SimulationBackend  ──┬──►  KinematicBackend   (numpy, ~13,500 steps/s)
+                                       └──►  GazeboBackend      (rclpy + gazebo_ros)
 ```
 
-**Restart the container later:**
+The contract is one frozen dataclass in each direction: `WorldState` out,
+`DriveCommand` in. Rewards, observations, buffers and the agent never import
+`rclpy`.
 
-```bash
-xhost +local:*
-docker start forklift
-docker exec -it forklift bash
-```
+| | kinematic | Gazebo |
+|---|---|---|
+| env steps / second | ~13,500 (measured, one CPU core) | bounded by physics plus two service round-trips per step — orders of magnitude slower |
+| needs ROS | no | yes |
+| models | unicycle kinematics, accel limits, actuation noise, circular obstacles | full rigid-body physics, contacts, meshes, sensors, `ros2_control` |
+| use it for | rewards, observations, hyperparameters, CI | validating the result |
 
-**Test the setup:**
+Workflow: tune on the fast one, change `backend: kinematic` to `backend: gazebo`,
+re-run. Same config, same code path, same reward.
 
-```bash
-make clean_build
-make manual_launch
-```
+The fast sim is not a physics engine and is not pretending to be one. Anything
+that depends on contact dynamics, wheel slip, sensor noise or mesh geometry has
+to be checked in Gazebo. It carries multiplicative actuation noise specifically
+so a policy cannot learn to exploit a perfectly deterministic transition model.
 
 ---
 
-## Build & Run
-
-Before training / testing, **build** the ROS2 packages.
+## Quick start
 
 ```bash
-# first time
-make build
+git clone <this repo> && cd ros2-forklift-rl-sim
+pip install -r requirements-dev.txt
+export PYTHONPATH=$PWD/src/forklift_gym_env
+
+make configs                         # what's available
+make test                            # 119 tests, ~6 s, no ROS
+make train                           # td3_kinematic.yaml
+make train CONFIG=td3_align_kinematic.yaml
+make evaluate RUN=runs/<dir>         # metrics + trajectory plot + GIF
+make tensorboard
 ```
 
-or, **clean + rebuild from scratch**:
+Everything is also reachable through the CLI directly:
 
 ```bash
-make clean_build
+python -m forklift_gym_env train -c td3_kinematic.yaml --set train.total_steps=5000
+python -m forklift_gym_env eval  -c runs/<dir>/config.yaml runs/<dir>/best.pt -n 20
+python -m forklift_gym_env report runs/a runs/b --labels A B -o compare.png
+python -m forklift_gym_env config -c td3_gazebo.yaml     # print the resolved config
 ```
 
-Run simulation with forklift + pallet + controllers:
+`--set` takes dotted paths and YAML-parses the value:
+`--set env.goal.distance_range="[3, 5]"`.
+
+---
+
+## The Gazebo path
+
+Requires **ROS 2 Humble** and **Gazebo 11** on Ubuntu 22.04, or the Docker image.
+
+> **Status.** The Gazebo backend was rewritten alongside everything else but has
+> not been re-run end to end since — the machine this rewrite was done on had no
+> ROS installation. Its logic is reviewed and its config is validated in CI, and
+> the kinematic backend it shares every line of task code with is covered by the
+> test suite, but treat the first Gazebo run as something to watch rather than
+> something to trust. The numbers in [Results](#results) are all from the
+> kinematic backend.
 
 ```bash
-make manual_launch
+make deps      # rosdep install from package.xml
+make build     # colcon build --symlink-install
+source install/setup.bash
+
+make sim            # terminal 1 — headless; add `make sim-gui` to watch
+make train-gazebo   # terminal 2
 ```
 
-Run **only** the manual GUI controller (no simulation):
+`make teleop` drives it by hand from a terminal. `make rviz` opens the sensor
+view. `make kill-gazebo` clears up if a run leaves `gzserver` behind.
+
+### Docker
 
 ```bash
-make gui_controller
+docker build -t forklift .
+docker run -it --rm --net=host -e DISPLAY=$DISPLAY \
+    -v /tmp/.X11-unix:/tmp/.X11-unix:rw -v "$PWD":/ws -w /ws forklift
 ```
+
+The image has a second `lite` stage with no ROS at all, for the fast sim and CI:
+`docker build --target lite -t forklift-lite .`
+
+### What makes the Gazebo backend fast enough to train in
+
+- **One ROS node** for the whole run, with every service client and publisher
+  cached on it and a single executor. (The previous version created and destroyed
+  a node — a fresh DDS participant — for *every* service call: twice per step and
+  eight or more times per reset.)
+- **Teleport, don't respawn.** Resets move entities with
+  `/gazebo/set_entity_state` and zero their twist. Nothing is deleted, the
+  controllers stay loaded, and the two hard-coded `sleep(3)` calls are gone.
+- **Physics uncapped.** The world sets `real_time_update_rate: 0`; the
+  environment paces itself off `/clock`, so real time is not the limit.
+- **Every wait has a timeout** and raises a named error instead of spinning
+  forever.
 
 ---
 
 ## Configuration
 
-All experiment and environment configuration lives in:
+One YAML file per experiment, parsed into typed dataclasses. **Unknown keys are
+an error**, with the valid names listed — a misspelled key fails at load time
+instead of silently doing nothing.
 
-```text
-src/forklift_gym_env/forklift_gym_env/config/
+```yaml
+env:
+  backend: kinematic
+  observation: [goal_vector_body, goal_distance, heading_error, velocity, last_action]
+  goal:
+    randomize: true
+    distance_range: [2.0, 8.0]
+    curriculum: {enabled: true, initial_distance: 2.5, final_distance: 8.0}
+  reward:
+    progress: 1.0      # potential-based shaping on distance
+    heading: 0.05      # potential-based shaping on bearing
+    success: 100.0
+    collision: -50.0
+    time: -0.12
+    action_smoothness: -0.05
+algo:
+  name: td3
+  gamma: 0.99
+  policy_delay: 2
+  use_her: false
 ```
 
-You can configure:
+The observation space is *derived* from the `observation` list, so it cannot
+drift out of sync with what the environment actually returns. Adding a feature
+resizes the space and the networks automatically.
 
-- `mode: train | test`
-- RL algorithm
-- reward function (distance-based, goal-reaching, etc.)
-- observation builder (pose-only, lidar, camera, mixed)
-- action space (steering only, steering + fork, continuous)
-- step duration
-- whether to launch `gzclient`
-- RL hyperparameters (LR, gamma, buffer size, etc.)
+Full reference: **[docs/configuration.md](docs/configuration.md)**.
+Design: **[docs/architecture.md](docs/architecture.md)**.
 
-**Example:**
+---
 
-```text
-src/forklift_gym_env/forklift_gym_env/config/config_DDPG_forklift_env.yaml
+## Repository layout
+
+```
+src/
+  forklift_robot/              the robot itself
+    urdf/                      forklift + sensor xacros
+    config/                    ros2_control controllers
+    launch/forklift_sim.launch.py    one launch file, arguments for the variants
+    forklift_robot/teleop.py   keyboard driving
+  ros_gazebo_plugins/          C++ contact-sensor plugin
+  forklift_gym_env/
+    config/                    the experiment YAMLs
+    worlds/  models/           Gazebo worlds and the pallet mesh
+    forklift_gym_env/
+      config.py                typed config + validation
+      geometry.py              Pose2D, angle wrapping, quaternions
+      paths.py                 locate packaged data via the ament index
+      envs/
+        forklift_env.py        the Gymnasium env, goal sampling, curriculum
+        backends/              base.py · kinematic.py · gazebo.py
+        observations.py        feature registry
+        rewards.py             reward-term registry
+        actions.py             normalised action -> rate-limited velocity
+      rl/                      networks.py · buffers.py · td3.py · train.py
+      utils/                   seeding · logging · viz
+      tests/                   119 tests
+      cli.py
+scripts/reward_shaping_demo.py
+docs/                          architecture · configuration · rewrite-notes · figures
 ```
 
 ---
 
-## Training & Testing
-
-This repo supports **two** main training paths.
-
-### 1. Custom PyTorch (DDPG / TD3)
+## Testing
 
 ```bash
-make train_DDPG
+make test        # 119 tests, ~6 s
+make coverage
+make lint        # ruff check + format check
 ```
 
-This will:
+No ROS, no Gazebo, no GPU. That is the payoff from putting the simulator behind
+an interface, and it is what lets CI run on a stock GitHub runner across Python
+3.10–3.12, validate every shipped config, and smoke-train end to end on every
+push.
 
-1. Launch ROS2/Gazebo-backed **`ForkliftEnv`**
-2. Load the matching **YAML config**
-3. Initialise the **DDPG** agent
-4. Run in **train** or **test** mode depending on the YAML setting
-
-**Source:**
-
-```text
-src/forklift_gym_env/forklift_gym_env/rl/DDPG/train_DDPG.py
-```
+The tests are written against the failures that actually happened, not for
+coverage: angle wrapping across ±π, the observation space matching the
+observation, potential-based shaping telescoping, HER manufacturing successes
+where a plain buffer yields none, `update()` surviving every policy delay, every
+target parameter being frozen, truncation staying distinct from termination.
 
 ---
 
-### 2. Stable Baselines 3 (PPO / DDPG / TQC / HER)
+## Notes on the rewrite
 
-```bash
-make train_sb3
-```
+This is version 1.0, a rewrite of the Python side. The URDF, meshes, worlds and
+the C++ Gazebo plugin are carried over largely unchanged — they were the good
+part.
 
-This runs:
+**[docs/rewrite-notes.md](docs/rewrite-notes.md)** lists what changed and why,
+including the bugs found along the way: an `UnboundLocalError` that fired for
+every `policy_delay > 1`, a `zip()` that left half a target network trainable, a
+reward function that computed two terms and returned neither, an
+`observation_space` hard-coded to `(2,)` while the config advertised three
+feature groups, a `ReplayBuffer` documented as HER that did no relabelling, and
+a pallet that never moved.
 
-```text
-src/forklift_gym_env/forklift_gym_env/rl/sb3_HER/train_sb3.py
-```
-
-Inside that file you’ll find:
-
-```python
-rl_algorithm = "PPO"  # change to "DDPG", "TQC", "HER", ...
-```
-
-So you can quickly try other SB3 algorithms.
-
-> **Note:** these scripts are exposed as **ROS entry points** (see `setup.py`) and are called via the **Makefile** — they are **not** meant to be run with plain `python train_x.py`.
-
----
-
-## Logging & TensorBoard
-
-Training runs log to **TensorBoard**.
-
-Start TensorBoard for **custom PyTorch** runs:
-
-```bash
-make start_tensorboard
-```
-
-Start TensorBoard for **SB3** runs:
-
-```bash
-make start_tensorboard_sb3
-```
-
-Then open the URL shown in the terminal.
-
-Logs are typically written to:
-
-```text
-logs_tensorboard/
-```
+It also documents a bug introduced *during* the rewrite — the shaping/idling
+trap above — because that one is the most useful of the lot, and because
+measuring it honestly turned out to matter: the first framing of that result
+attributed a 15%→100% jump to the reward change, and re-running it with only the
+reward changed showed the effect is real but much smaller than that. The
+measured version is what is in the figure.
 
 ---
 
-## Sensors
+## Credits
 
-The forklift model supports:
+The forklift URDF, the Gazebo worlds and the contact-sensor plugin originate
+from [cangozpi](https://github.com/cangozpi)'s work on this simulation, as does
+the companion [differential-drive navigation
+environment](https://github.com/cangozpi/Custom-Differential-Drive-Navigation-Environment-and-Deep-Reinforcement-Learning-Agents)
+linked above. The v1.0 Python stack — environment, backends, RL, packaging,
+tests — is a rewrite.
 
-- ✅ Camera  
-- ✅ Depth camera  
-- ✅ LiDAR  
-- ✅ Collision detection sensor (custom Gazebo plugin)
-
-Toggle sensors in:
-
-```text
-src/forklift_robot/urdf/forklift.urdf.xacro
-```
-
-**Example:**
-
-```xml
-<xacro:include filename="lidar.xacro"/>
-<!-- <xacro:include filename="camera.xacro"/> -->  <!-- regular RGB camera -->
-<xacro:include filename="depth_camera.xacro"/>     <!-- depth camera -->
-```
-
-Comment/uncomment to switch between camera types.
-
-If present, you can also add:
-
-```html
-<img src="README_assets/camera_raw_image_subscriber_ss.png" width="800"/>
-<img src="README_assets/depth_camera_raw_image_subscriber_ss.jpeg" width="800"/>
-<img src="README_assets/rviz_lidar_ss.jpeg" width="800"/>
-```
-
----
-
-## Available RL Algorithms
-
-**Built-in / ready:**
-
-- **DDPG** (PyTorch)
-- **TD3** (PyTorch)
-- **DDPG + HER** (see `feature/HER` branch or commit `884104d`)
-- **SB3-based:** PPO, DDPG, TQC, HER (via `train_sb3.py`)
-- **Env modes:** both `gym.Env` and `gym.GoalEnv` supported (via reward utils)
-
-**Easy to bring in (from related repo):**
-
-- VPG
-- DQN
-
----
-
-## Related Simpler Repo
-
-To prototype reward functions faster (no Gazebo, cheaper experiments), see:
-
-**Custom Differential Drive Navigation Environment and Deep Reinforcement Learning Agents**  
-A light-weight OpenAI Gym environment with discrete and continuous action spaces, plus custom PyTorch + SB3 agents.  
-Good for testing before running the heavy forklift sim.  
-**Repo:** https://github.com/cangozpi/Custom-Differential-Drive-Navigation-Environment-and-Deep-Reinforcement-Learning-Agents
-
----
-
-## Makefile Quick Reference
-
-```text
-make build                   # build ROS2 packages
-make clean_build             # clean + build from scratch
-make manual_launch           # run Gazebo + forklift + pallet + controllers
-make gui_controller          # manual GUI only
-make train_DDPG              # train custom PyTorch DDPG/TD3 agent
-make train_sb3               # train SB3 agent (PPO/DDPG/TQC/HER)
-make start_tensorboard       # TensorBoard for custom agents
-make start_tensorboard_sb3   # TensorBoard for SB3
-make kill_gazebo_processes   # kill stuck gazebo/gzclient/gzserver
-```
-
-Open the `Makefile` to see the exact ROS launch commands and Python entry points.
-
----
-
-## Killing Stuck Gazebo Processes
-
-Sometimes stopping with `Ctrl + C` leaves `gzclient` / `gzserver` running → blank Gazebo windows or port conflicts.
-
-Use:
-
-```bash
-make kill_gazebo_processes
-```
-
-This kills Gazebo-related processes.
-
----
-
-## Notes / Limitations
-
-- ❗ No parallelisation yet — **1 Gazebo sim per run**.
-- ❗ Rebuild after ROS2 code changes:
-
-  ```bash
-  make clean_build
-  ```
-
-- ❗ Some features (e.g. **DDPG+HER**) live on a separate branch and aren’t merged into `main`.
-
----
-
-## Screenshots
-
-
-
-![Forklift RL training](README_assets/forkliftEnv_training_ss.png)
-
-![Forklift GUI controller](README_assets/forklift_gui_controller_ss.png)
-
-
----
+Built on ROS 2 Humble, Gazebo 11, Gymnasium and PyTorch. The TD3 implementation
+follows Fujimoto et al. (2018); the shaping argument is Ng, Harada & Russell
+(1999); hindsight relabelling is Andrychowicz et al. (2017).
 
 ## License
 
-This project is licensed under the **Apache License 2.0**.
-
-Copyright © 2025 **Saurabh Khimesra**
-
-
----
+Apache License 2.0.
