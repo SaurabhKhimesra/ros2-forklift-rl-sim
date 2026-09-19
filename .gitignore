@@ -1,14 +1,34 @@
-.vscode/
-__pycache__/
+# --- ROS / colcon ---
 build/
 install/
 log/
+
+# --- python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+
+# --- training artefacts ---
+runs/
+experiments/
+*.pt
 *.pkl
 logs_tensorboard/
-*.zip
 sb3_tensorboard/
-.pytest_cache
-log_*
-# *log*
-# !logging/
-# !logger.py
+
+# --- tooling ---
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.vscode/
+.idea/
+
+# --- editor detritus (a vim swap file was committed to the original repo) ---
+*.swp
+*.swo
+*~
+.DS_Store

@@ -1,0 +1,33 @@
+# Tooling config for the pure-Python parts. The ROS packages are still built
+# with colcon; this exists so `pytest` and `ruff` work in a plain checkout with
+# no ROS installed, which is what CI uses.
+
+[tool.pytest.ini_options]
+testpaths = ["src/forklift_gym_env/forklift_gym_env/tests"]
+pythonpath = ["src/forklift_gym_env"]
+addopts = "-q --strict-markers --strict-config"
+filterwarnings = ["error::DeprecationWarning:forklift_gym_env.*"]
+markers = [
+    "slow: takes more than a couple of seconds",
+    "ros: requires a sourced ROS 2 workspace (skipped by default)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src/forklift_gym_env"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM", "RUF"]
+ignore = [
+    "B008",    # function call in default argument - not used here
+    "SIM108",  # ternary-vs-if is a readability judgement call
+    "RUF012",  # mutable class attrs need ClassVar - noisy for dataclass-free config
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/*" = ["E501", "B011", "SIM117", "SLF001"]
+
+[tool.coverage.run]
+source = ["forklift_gym_env"]
+omit = ["*/tests/*", "*/backends/gazebo.py"]  # gazebo needs ROS; covered by the ros marker
