@@ -2,22 +2,32 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>ros_gazebo_plugins</name>
-  <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="cangozpinar@gmail.com">cangozpi</maintainer>
-  <license>TODO: License declaration</license>
+  <version>1.0.0</version>
+  <description>
+    Gazebo sensor plugin that republishes per-link contact state on
+    /collision_detection/&lt;link_name&gt;, used by the forklift environment to detect
+    collisions with anything that is not the ground plane.
+  </description>
+  <maintainer email="learningkhimesra@gmail.com">Saurabh Khimesra</maintainer>
+  <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- These were previously nested inside <export>, where neither rosdep nor
+       colcon can see them, so `rosdep install` reported nothing to install and
+       the build failed on a clean machine. -->
+  <depend>gazebo</depend>
+  <depend>gazebo_dev</depend>
+  <depend>gazebo_msgs</depend>
+  <depend>gazebo_ros</depend>
+  <depend>rclcpp</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
-    <depend>rclcpp</depend>
-    <depend>gazebo</depend>
-    <depend>gazebo_msgs</depend>
-    <depend>gazebo_ros</depend>
-    <gazebo_ros plugin_path="${prefix}/../../lib" gazebo_media_path="${prefix}" /> <!-- Added by me-->
+    <!-- Tells gazebo_ros where the .so lives; must match the install() above. -->
+    <gazebo_ros plugin_path="${prefix}/../../lib"/>
   </export>
 </package>
