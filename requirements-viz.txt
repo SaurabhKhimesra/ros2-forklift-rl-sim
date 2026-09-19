@@ -1,0 +1,5 @@
+# Only needed for `forklift report`, trajectory plots and GIF export.
+matplotlib>=3.6
+pandas>=1.5
+imageio>=2.25
+tensorboard>=2.12
