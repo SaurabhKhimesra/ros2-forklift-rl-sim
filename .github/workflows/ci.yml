@@ -16,6 +16,10 @@ jobs:
   # with no ROS and no Gazebo, so CI runs in under a minute on a stock runner.
   test:
     runs-on: ubuntu-latest
+    # The package is not pip-installed here, so `python -m forklift_gym_env`
+    # needs the source root on the path. pytest gets this from pyproject.toml.
+    env:
+      PYTHONPATH: src/forklift_gym_env
     strategy:
       fail-fast: false
       matrix:
@@ -58,9 +62,10 @@ jobs:
       - name: Install dependencies
         run: |
           apt-get update
+          apt-get install -y python3-pip
           rosdep update --rosdistro humble || true
           rosdep install --from-paths src --ignore-src -y --rosdistro humble || true
-          pip install -r requirements.txt
+          python3 -m pip install -r requirements.txt
       - name: colcon build
         shell: bash
         run: |
