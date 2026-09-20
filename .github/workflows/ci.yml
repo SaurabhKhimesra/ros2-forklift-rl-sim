@@ -63,6 +63,10 @@ jobs:
         run: |
           apt-get update
           apt-get install -y python3-pip
+          # Humble ships a setuptools that calls packaging's strip_trailing_zero,
+          # which only exists in packaging >= 24. Keep setuptools under 80 so
+          # `setup.py develop` still exists for --symlink-install.
+          python3 -m pip install -U "setuptools<80" "packaging>=24"
           rosdep update --rosdistro humble || true
           rosdep install --from-paths src --ignore-src -y --rosdistro humble || true
           python3 -m pip install -r requirements.txt
