@@ -82,9 +82,9 @@ python -m forklift_gym_env eval -c runs/<run>/config.yaml runs/<run>/best.pt \
     -n 24 --plot trajectories.png --gif rollout.gif
 ```
 
-This is the figure that would have been impossible before: the previous version
-pinned the pallet at a single fixed coordinate for every episode, so there was
-nothing for a policy to generalise over.
+Randomised placement is what makes this figure mean anything: the pallet moves
+every episode, so the number measures generalisation rather than one memorised
+trajectory.
 
 ### TD3 vs DDPG on the alignment task
 
@@ -159,9 +159,9 @@ robot actually reached.
 | TD3 alone | 20% | 4.01 m | 198 |
 
 Without relabelling the agent occasionally stumbles into a near goal during
-warm-up, learns a little, then loses it — the classic sparse-reward failure. The
-previous version of this repository shipped a buffer whose docstring cited the
-HER paper and whose relabelling method copied the transitions across unchanged.
+warm-up, learns a little, then loses it — the classic sparse-reward failure.
+Relabelling is what turns those near misses into usable signal, and it is worth
+checking that a buffer named HER actually performs it.
 
 ---
 
@@ -326,12 +326,12 @@ The image has a second `lite` stage with no ROS at all, for the fast sim and CI:
 ### What makes the Gazebo backend fast enough to train in
 
 - **One ROS node** for the whole run, with every service client and publisher
-  cached on it and a single executor. (The previous version created and destroyed
-  a node — a fresh DDS participant — for *every* service call: twice per step and
-  eight or more times per reset.)
+  cached on it and a single executor. Creating a node per service call spins up a
+  fresh DDS participant each time; at twice per step and eight or more times per
+  reset, that alone dominates the step cost.
 - **Teleport, don't respawn.** Resets move entities with
   `/gazebo/set_entity_state` and zero their twist. Nothing is deleted, the
-  controllers stay loaded, and the two hard-coded `sleep(3)` calls are gone.
+  controllers stay loaded, and no fixed `sleep()` sits in the reset path.
 - **Physics uncapped.** The world sets `real_time_update_rate: 0`; the
   environment paces itself off `/clock`, so real time is not the limit.
 - **Every wait has a timeout** and raises a named error instead of spinning
@@ -432,35 +432,35 @@ target parameter being frozen, truncation staying distinct from termination.
 
 ## Notes on the rewrite
 
-This is version 1.0, a rewrite of the Python side. The URDF, meshes, worlds and
-the C++ Gazebo plugin are carried over largely unchanged — they were the good
-part.
+This is version 1.0, a rewrite of the Python side. The robot itself — the URDF
+and meshes, the Gazebo worlds, the C++ contact-sensor plugin — is carried over
+from the original project essentially unchanged. Having a working robot
+description and a working plugin to build on is most of what made the rest of
+this possible.
 
-**[docs/rewrite-notes.md](docs/rewrite-notes.md)** lists what changed and why,
-including the bugs found along the way: an `UnboundLocalError` that fired for
-every `policy_delay > 1`, a `zip()` that left half a target network trainable, a
-reward function that computed two terms and returned neither, an
-`observation_space` hard-coded to `(2,)` while the config advertised three
-feature groups, a `ReplayBuffer` documented as HER that did no relabelling, and
-a pallet that never moved.
+**[docs/rewrite-notes.md](docs/rewrite-notes.md)** is the engineering change
+log: what the v1.0 stack does differently and the reasoning behind each
+decision, including the bugs fixed on the way. It is written for anyone doing
+similar work, because RL code fails quietly — a training curve can look
+completely reasonable while something underneath it is wrong.
 
-It also documents a bug introduced *during* the rewrite — the shaping/idling
-trap above — because that one is the most useful of the lot, and because
-measuring it honestly turned out to matter: the first framing of that result
-attributed a 15%→100% jump to the reward change, and re-running it with only the
-reward changed showed the effect is real but much smaller than that. The
-measured version is what is in the figure.
+The entry worth reading is a bug introduced *during* this rewrite — the
+shaping/idling trap above — and what it took to measure it honestly. The first
+framing of that result attributed a 15%→100% jump to the reward change;
+re-running with only the reward changed showed the effect is real but much
+smaller than that. The measured version is the one in the figure.
 
 ---
 
 ## Credits
 
-The forklift URDF, the Gazebo worlds and the contact-sensor plugin originate
-from [cangozpi](https://github.com/cangozpi)'s work on this simulation, as does
-the companion [differential-drive navigation
+This project builds on [cangozpi](https://github.com/cangozpi)'s forklift
+simulation. The URDF, the Gazebo worlds and the contact-sensor plugin are
+theirs, as is the companion [differential-drive navigation
 environment](https://github.com/cangozpi/Custom-Differential-Drive-Navigation-Environment-and-Deep-Reinforcement-Learning-Agents)
-linked above. The v1.0 Python stack — environment, backends, RL, packaging,
-tests — is a rewrite.
+linked above — the modelling and plugin work that the rest of this stands on.
+The v1.0 Python stack — environment, backends, RL, packaging, tests — is a
+rewrite.
 
 Built on ROS 2 Humble, Gazebo 11, Gymnasium and PyTorch. The TD3 implementation
 follows Fujimoto et al. (2018); the shaping argument is Ng, Harada & Russell

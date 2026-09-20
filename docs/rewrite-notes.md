@@ -1,8 +1,15 @@
 # Rewrite notes (v1.0)
 
-What was wrong in the previous version, and what replaced it. Kept because the
-bugs are instructive — several are the kind that produce a plausible-looking
-training curve and a policy that never works.
+What the v1.0 Python stack does differently from the version it grew out of,
+and the reasoning behind each decision.
+
+This is a technical record, not a scorecard. The original project got a forklift,
+a full sensor stack and a contact-detection plugin working in Gazebo — the hard,
+unglamorous part — and all of it is carried over here intact. What changed is the
+Python side, and it is written up in this much detail because the failure modes
+are genuinely instructive: most are the kind that produce a plausible-looking
+training curve and a policy that never works, and most are mistakes anyone
+writing RL code makes once.
 
 ---
 
@@ -38,8 +45,7 @@ Confirmed with `pyflakes`.
 
 ### The reward function threw away everything it computed
 `calc_reward_L2_dist` computed `angular_cost` and `action_norm_penalty_reward`,
-then fell through to `return -0.1 * l2_dist`. Both locals were dead. (So was
-`obs` on line 73.)
+then fell through to `return -0.1 * l2_dist`. Both locals were dead.
 
 ### Heading error was never wrapped
 `total_angle_difference_to_goal = angle_to_goal - theta`, unwrapped, fed straight
@@ -71,8 +77,8 @@ raised `ValueError`.
 
 ### `train_sb3.py` silently trained on Pendulum
 The `DDPG` branch — the one the file selected by default — replaced the forklift
-environment with `gym.make('Pendulum-v1')`. Leftover debug code, alongside
-`print(env, "AAAAAAAAAAAAAAAAAAAAA")`.
+environment with `gym.make('Pendulum-v1')` — leftover debug code that was never
+taken back out.
 
 ---
 
@@ -95,8 +101,8 @@ agent.actor.model_layers[1].weight.data[:] = torch.tensor([[0.0, 0.3], [1.5, 0.0
 
 A 2×2 matrix written directly into the actor to seed it as a proportional
 controller — which also meant the code crashed for any other observation or
-action size, and made the reported learning curve partly a hand-tuned controller
-rather than a learned policy.
+action size, and that the resulting curve reflected a partly hand-set controller
+rather than a fully learned policy.
 
 *Now:* features declare their own width; the space is derived from the same list
 the builder uses; the config rejects unknown feature names. No hand-set weights
@@ -104,7 +110,7 @@ anywhere.
 
 ---
 
-## Things that were not bugs but stopped it learning
+## Design choices that held learning back
 
 ### The pallet never moved
 Every randomisation line in `reset()` was commented out, leaving
@@ -133,9 +139,10 @@ the Q-target non-stationary on top of the usual bootstrapping.
 *Now:* no BatchNorm (a test asserts it), small final-layer initialisation so
 `tanh` starts unsaturated, and `LayerNorm` available behind a flag.
 
-### "Hindsight Experience Replay implementation" that did no relabelling
-The buffer's docstring cited the HER paper. `commit_append()`, the method meant
-to do the relabelling, copied the staged transitions across unchanged.
+### The HER buffer did not relabel
+The buffer was documented as Hindsight Experience Replay, but `commit_append()`,
+the method meant to do the relabelling, copied the staged transitions across
+unchanged.
 
 *Now:* a real `future`-strategy HER buffer with episode-major storage,
 length-weighted episode sampling and recomputed rewards and terminals. Tested by
@@ -200,14 +207,14 @@ configurable interval.
 |---|---|
 | `packages=[package_name]` — subpackages never installed; worked only under `--symlink-install` | `find_packages()` |
 | `config/` commented out of `data_files`, so three scripts hard-coded `'build/forklift_gym_env/...'` | configs installed to `share/`, resolved through the ament index with a source fallback |
-| `package.xml`: no dependencies at all, `description: TODO`, `license: TODO` | real `exec_depend` list, real metadata, Apache-2.0 |
+| `package.xml`: no dependencies declared, placeholder description and license | real `exec_depend` list, real metadata, Apache-2.0 |
 | `requirements.txt`: 150-line `pip freeze` pinning ROS message packages, **both** `gym==0.21.0` and `gymnasium==0.27.1`, `numpy==1.23.3` against torch 1.13 | 4 runtime pins; ROS deps in `package.xml` where `rosdep` can act on them |
 | Dockerfile copied the repo before installing, and had both dependency installs commented out | layered so deps cache; a code edit rebuilds in seconds; plus a ROS-free `lite` stage for CI |
 | Six launch files differing only in what was commented out | one, with arguments |
-| `Makefile` with an absolute path to one developer's home directory | no absolute paths |
+| `Makefile` with a hard-coded absolute home-directory path | no absolute paths |
 | No CI | GitHub Actions: lint, tests on 3.10–3.12, every config validated, a smoke train, and a separate colcon build |
-| No tests that ran (`test_ForkliftEnv.py` was entirely commented out; the linters were renamed `no_test_*`) | 119 tests, no ROS required |
-| A vim swap file (`.swp`) committed at the repo root | gone, and `.gitignore` covers it |
+| No tests that ran (the env test file was commented out, the rest renamed `no_test_*`) | 119 tests, no ROS required |
+| Editor swap files not ignored | `.gitignore` covers them, along with `runs/` and checkpoints |
 | Everything on CPU, no device handling | `device: auto`, `map_location` on load |
 | `torch.save` of four `.pkl` files into the CWD, no optimiser state, no step count | one checkpoint with optimiser state, step, and the dims it was trained for |
 
