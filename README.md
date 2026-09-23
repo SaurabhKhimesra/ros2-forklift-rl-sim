@@ -1,5 +1,10 @@
 # Deep RL Forklift Simulation
 
+[![CI](https://github.com/SaurabhKhimesra/ros2-forklift-rl-sim/actions/workflows/ci.yml/badge.svg)](https://github.com/SaurabhKhimesra/ros2-forklift-rl-sim/actions/workflows/ci.yml)
+[![Python 3.10–3.12](https://img.shields.io/badge/python-3.10%E2%80%933.12-blue.svg)](https://www.python.org/)
+[![ROS 2 Humble](https://img.shields.io/badge/ROS%202-Humble-22314E.svg)](https://docs.ros.org/en/humble/)
+[![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](LICENSE)
+
 Training a forklift to drive up to a pallet and square up with it, in **ROS 2 +
 Gazebo** — with a fast ROS-free simulator alongside it so the reward function can
 be iterated on in minutes instead of days.
@@ -170,10 +175,9 @@ checking that a buffer named HER actually performs it.
 Screenshots from the Gazebo side of the project — the robot, its controllers and
 its sensor stack, running under ROS 2 Humble.
 
-> These predate the v1.0 rewrite: they document the robot description, the
-> controllers and the sensor pipeline, all of which are carried over unchanged.
-> They are not screenshots of the rewritten backend — see the status note under
-> [The Gazebo path](#the-gazebo-path).
+> These document the robot description, the controllers and the sensor
+> pipeline. They were taken before the Python stack was rewritten around it —
+> see the status note under [The Gazebo path](#the-gazebo-path).
 
 <p align="center">
   <img src="docs/figures/simulation/gazebo_forklift_and_pallet.png" width="760"
@@ -267,7 +271,7 @@ pip install -r requirements-dev.txt
 export PYTHONPATH=$PWD/src/forklift_gym_env
 
 make configs                         # what's available
-make test                            # 119 tests, ~6 s, no ROS
+make test                            # 119 tests, a few seconds, no ROS
 make train                           # td3_kinematic.yaml
 make train CONFIG=td3_align_kinematic.yaml
 make evaluate RUN=runs/<dir>         # metrics + trajectory plot + GIF
@@ -292,13 +296,13 @@ python -m forklift_gym_env config -c td3_gazebo.yaml     # print the resolved co
 
 Requires **ROS 2 Humble** and **Gazebo 11** on Ubuntu 22.04, or the Docker image.
 
-> **Status.** The Gazebo backend was rewritten alongside everything else but has
-> not been re-run end to end since — the machine this rewrite was done on had no
-> ROS installation. Its logic is reviewed and its config is validated in CI, and
-> the kinematic backend it shares every line of task code with is covered by the
-> test suite, but treat the first Gazebo run as something to watch rather than
-> something to trust. The numbers in [Results](#results) are all from the
-> kinematic backend.
+> **Status.** This path has not been run end to end since the Python stack was
+> rewritten around it, because the machine that work was done on has no ROS
+> installation. The packages build in CI, every shipped config is validated
+> there, the URDF is checked to expand, and the kinematic backend it shares
+> every line of task code with is covered by the test suite — but treat the
+> first Gazebo run as something to watch rather than something to trust. The
+> numbers in [Results](#results) are all from the kinematic backend.
 
 ```bash
 make deps      # rosdep install from package.xml
@@ -412,7 +416,7 @@ docs/                          architecture · configuration · rewrite-notes ·
 ## Testing
 
 ```bash
-make test        # 119 tests, ~6 s
+make test        # 119 tests, a few seconds
 make coverage
 make lint        # ruff check + format check
 ```
@@ -432,35 +436,35 @@ target parameter being frozen, truncation staying distinct from termination.
 
 ## Notes on the rewrite
 
-This is version 1.0, a rewrite of the Python side. The robot itself — the URDF
-and meshes, the Gazebo worlds, the C++ contact-sensor plugin — is carried over
-from the original project essentially unchanged. Having a working robot
-description and a working plugin to build on is most of what made the rest of
-this possible.
-
 **[docs/rewrite-notes.md](docs/rewrite-notes.md)** is the engineering change
-log: what the v1.0 stack does differently and the reasoning behind each
-decision, including the bugs fixed on the way. It is written for anyone doing
-similar work, because RL code fails quietly — a training curve can look
-completely reasonable while something underneath it is wrong.
+log: what this stack does differently from the project it grew out of, and the
+reasoning behind each decision, including the bugs found on the way. It is
+written for anyone doing similar work, because RL code fails quietly — a
+training curve can look completely reasonable while something underneath it is
+wrong.
 
-The entry worth reading is a bug introduced *during* this rewrite — the
-shaping/idling trap above — and what it took to measure it honestly. The first
-framing of that result attributed a 15%→100% jump to the reward change;
-re-running with only the reward changed showed the effect is real but much
-smaller than that. The measured version is the one in the figure.
+The entry worth reading is a bug I introduced myself — the shaping/idling trap
+above — and what it took to measure it honestly. My first framing of that
+result attributed a 15%→100% jump to the reward change; re-running with only
+the reward weights changed showed the effect is real but far smaller. The
+measured version is the one in the figure.
 
 ---
 
 ## Credits
 
-This project builds on [cangozpi](https://github.com/cangozpi)'s forklift
-simulation. The URDF, the Gazebo worlds and the contact-sensor plugin are
-theirs, as is the companion [differential-drive navigation
-environment](https://github.com/cangozpi/Custom-Differential-Drive-Navigation-Environment-and-Deep-Reinforcement-Learning-Agents)
-linked above — the modelling and plugin work that the rest of this stands on.
-The v1.0 Python stack — environment, backends, RL, packaging, tests — is a
-rewrite.
+The simulated robot comes from Can Gozpinar's
+[ROS2-Forklift-Simulation](https://github.com/cangozpi/ROS2-Forklift-Simulation):
+the URDF and sensor xacros, the pallet model, the Gazebo worlds and the C++
+contact-sensor plugin are theirs. Starting from a robot description and a
+working contact plugin is what made the rest of this tractable, and they are
+carried over here with only the fixes noted in
+[docs/rewrite-notes.md](docs/rewrite-notes.md).
+
+Everything above the robot is mine: the Gymnasium environment, the backend
+split and both simulators, the observation and reward registries, TD3/DDPG and
+the HER buffer, the training and evaluation loops, the configuration system,
+the CLI, the test suite, CI and the ROS 2 packaging.
 
 Built on ROS 2 Humble, Gazebo 11, Gymnasium and PyTorch. The TD3 implementation
 follows Fujimoto et al. (2018); the shaping argument is Ng, Harada & Russell
@@ -468,4 +472,6 @@ follows Fujimoto et al. (2018); the shaping argument is Ng, Harada & Russell
 
 ## License
 
-Apache License 2.0.
+Apache License 2.0 for the work in this repository. The upstream project
+carries no license file, so the files inherited from it are not covered by that
+grant — [NOTICE](NOTICE) lists exactly which ones and why.

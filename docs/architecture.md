@@ -19,7 +19,7 @@ The environment does not know what a simulator is.
               ┌───────────────▼──┐        ┌──▼──────────────────┐
               │ KinematicBackend │        │   GazeboBackend     │
               │ pure numpy       │        │ rclpy + gazebo_ros  │
-              │ ~13,000 steps/s  │        │ physics, sensors,   │
+              │ ~13,500 steps/s  │        │ physics, sensors,   │
               │ no ROS at all    │        │ contacts, meshes    │
               └──────────────────┘        └─────────────────────┘
 ```
@@ -31,7 +31,7 @@ velocity command in SI units. That is the entire contract.
 Three things fall out of it:
 
 1. **Rewards, observations, buffers and the agent never import `rclpy`.** The
-   whole test suite runs on a stock GitHub runner in under 20 seconds.
+   whole test suite runs on a stock GitHub runner in under ten seconds.
 2. **Reward iteration stops being expensive.** A reward-function change can be
    validated over 60,000 environment steps in about five minutes on a laptop CPU
    rather than several hours of Gazebo wall clock.

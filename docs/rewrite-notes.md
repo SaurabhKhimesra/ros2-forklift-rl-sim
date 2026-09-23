@@ -220,6 +220,47 @@ configurable interval.
 
 ---
 
+## Two drive paths fighting over the same wheels
+
+The robot was set up to be driven two ways at once. `gazebo.xacro` loaded
+`libgazebo_ros_diff_drive.so`, which writes `left_wheel_joint` and
+`right_wheel_joint` directly and publishes `/odom` and the `odom -> base_link`
+transform. `ros2_control.xacro` loaded `gazebo_ros2_control`, which claims a
+velocity interface on those same two joints, and the launch file activated a
+`diff_cont` `DiffDriveController` on top — a second writer and a second `/odom`
+publisher.
+
+Only one of them was ever actually commanded. Upstream published to `/cmd_vel`,
+which is the plugin's topic; the `/diff_cont/cmd_vel_unstamped` line in that
+publisher was commented out. So the plugin drove the robot and the entire
+ros2_control stack — the controller manager, `my_controllers.yaml`, the
+acceleration limits mirrored from `RobotConfig` — was configured, loaded, and
+inert.
+
+Rewriting the backend moved the topic to `/cmd_vel_unstamped`, which belongs to
+neither: `diff_drive_controller` subscribes on `~/cmd_vel_unstamped`, and that
+resolves to `/diff_cont/cmd_vel_unstamped`. The commands went to a topic with no
+subscribers and the forklift sat still, with nothing logged to say why.
+
+*Now:* ros2_control is the only drive path. The environment and the teleop node
+publish to `/diff_cont/cmd_vel_unstamped`, and the `gazebo_ros_diff_drive`
+plugin is gone from the URDF — with a comment where it used to be, because
+re-adding it is an easy mistake to make twice.
+
+Two adjacent packaging faults came out of the same thread:
+
+* `ros2_control.xacro` pointed `<parameters>` at
+  `$(find forklift_robot)/my_controllers.yaml`. `setup.py` installs that file to
+  `share/forklift_robot/config/`, so `gazebo_ros2_control` would have come up
+  with no controller parameters at all. The correct path was sitting directly
+  underneath, commented out.
+* `env.gazebo.controllers` was declared in the config dataclass, documented, and
+  set in `td3_gazebo.yaml` — and read by nothing. A config key that silently
+  does nothing is the exact failure the typed config exists to prevent, so it is
+  gone; the launch file is the authority on which controllers come up.
+
+---
+
 ## A bug introduced during this rewrite, and kept as a lesson
 
 The first version of the new reward used potential-based shaping with
