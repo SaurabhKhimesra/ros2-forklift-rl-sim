@@ -1,0 +1,35 @@
+ros2-forklift-rl-sim
+Copyright 2025 Saurabh Khimesra
+
+This product includes software developed by Saurabh Khimesra, licensed under
+the Apache License, Version 2.0 (see LICENSE).
+
+
+THIRD-PARTY MATERIAL
+--------------------
+
+The simulated robot and its Gazebo assets originate from
+ROS2-Forklift-Simulation by Can Gozpinar (https://github.com/cangozpi), and are
+included here in modified form:
+
+    src/forklift_robot/urdf/*.xacro          forklift description and sensors
+    src/forklift_robot/rviz/*.rviz           RViz layouts
+    src/forklift_gym_env/worlds/*.world      Gazebo worlds
+    src/forklift_gym_env/models/pallet/      pallet model, mesh and texture
+    src/ros_gazebo_plugins/src/*             contact-sensor plugin (C++)
+
+That upstream project does not carry a license file, so no license terms were
+granted with it and these files are not covered by the Apache-2.0 grant above.
+They are included on the understanding that the work is published for reference
+and reuse; if you are the author and would prefer they were removed or licensed
+explicitly, please open an issue and it will be actioned.
+
+Everything else in this repository -- the Gymnasium environment, both simulation
+backends, the observation and reward registries, the TD3/DDPG implementation and
+replay buffers, the training and evaluation loops, the CLI, configuration
+system, tests, CI and packaging -- is original work under the Apache-2.0 grant
+above.
+
+The pallet mesh (src/forklift_gym_env/models/pallet/meshes/) is a third-party
+asset redistributed by the upstream project; its own provenance is not recorded
+there.
