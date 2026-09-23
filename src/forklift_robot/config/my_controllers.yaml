@@ -1,9 +1,8 @@
 # ros2_control configuration for the forklift.
 #
-# Trimmed from the original, which carried ~60 lines of commented-out parameter
-# names copied from upstream documentation, three alternative controller types
-# per joint and a "NOT SURE IF I SET IT CORRECTLY" note on the base frame. The
-# values that are actually used are kept, each with the reason it has that value.
+# These three controllers are the only drive path: there is deliberately no
+# gazebo_ros_diff_drive plugin in the URDF, because two controllers writing the
+# same wheel joints fight each other and both publish /odom.
 
 controller_manager:
   ros__parameters:

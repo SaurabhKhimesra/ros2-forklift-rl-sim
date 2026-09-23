@@ -1,20 +1,20 @@
 """ROS 2 / Gazebo backend.
 
-What changed, and why it matters for throughput
------------------------------------------------
-The previous implementation created a brand-new ``rclpy`` node -- and therefore
-a new DDS participant, with all the discovery traffic that implies -- for every
-single service call. A single ``step()`` did that twice (pause + unpause) and a
-``reset()`` did it eight or more times, on top of two hard-coded ``sleep(3)``
-calls. Measured on the original code that is roughly six to nine seconds of wall
-clock per episode reset before any physics runs.
+Four things here exist to keep the per-step cost down, because in Gazebo the
+simulator is the bottleneck and everything else is noise:
 
-Here there is **one** node, created once, with every service client and
-publisher cached on it and a single executor spinning it. Resets *teleport* the
-entities with ``/gazebo/set_entity_state`` instead of deleting and respawning
-them, so the ros2_control controllers stay loaded and there is nothing to sleep
-for. Every wait is bounded by a timeout and raises a named exception rather than
-spinning forever.
+* **One node for the whole run.** Every service client and publisher is cached
+  on it and a single executor spins it in a background thread. Creating a node
+  per service call means a fresh DDS participant, and the discovery traffic that
+  implies, twice per ``step()`` and eight or more times per ``reset()``.
+* **Resets teleport, they do not respawn.** ``/gazebo/set_entity_state`` moves
+  the entities and zeroes their twist. Nothing is deleted, so the ros2_control
+  controllers stay loaded and there is nothing to sleep for.
+* **The world runs uncapped** (``real_time_update_rate: 0``) and this backend
+  paces itself off ``/clock``, so real time is not the limit.
+* **Every wait has a timeout** and raises :class:`GazeboTimeoutError` naming
+  what it was waiting for, rather than spinning forever against a stalled
+  ``gzserver``.
 """
 
 from __future__ import annotations
@@ -120,7 +120,10 @@ class GazeboBackend(SimulationBackend):
         self._get_state = self._client(GetEntityState, "/gazebo/get_entity_state")
         self._empty_req = Empty.Request()
 
-        self._cmd_vel = self._node.create_publisher(Twist, "/cmd_vel_unstamped", 10)
+        # diff_drive_controller subscribes on ~/cmd_vel_unstamped, which resolves
+        # to /diff_cont/cmd_vel_unstamped -- not the bare /cmd_vel the old
+        # gazebo_ros_diff_drive plugin used.
+        self._cmd_vel = self._node.create_publisher(Twist, "/diff_cont/cmd_vel_unstamped", 10)
         self._fork_cmd = self._node.create_publisher(
             Float64MultiArray, "/fork_joint_controller/commands", 10
         )

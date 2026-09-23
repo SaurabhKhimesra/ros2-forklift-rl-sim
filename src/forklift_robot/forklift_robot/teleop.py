@@ -37,7 +37,7 @@ FORK_STEP = 0.05
 class Teleop(Node):
     def __init__(self) -> None:
         super().__init__("forklift_teleop")
-        self.cmd_vel = self.create_publisher(Twist, "/cmd_vel_unstamped", 10)
+        self.cmd_vel = self.create_publisher(Twist, "/diff_cont/cmd_vel_unstamped", 10)
         self.fork = self.create_publisher(Float64MultiArray, "/fork_joint_controller/commands", 10)
         self.linear = 0.0
         self.angular = 0.0

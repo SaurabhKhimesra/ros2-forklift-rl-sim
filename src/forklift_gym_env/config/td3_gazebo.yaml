@@ -69,7 +69,8 @@ env:
     pallet_entity: pallet
     pallet_model: pallet/model.sdf
     spawn_z: 0.30
-    controllers: [joint_broad, fork_joint_controller]
+    # The launch file brings up joint_broad, fork_joint_controller and
+    # diff_cont before training starts; see forklift_sim.launch.py.
     collision_links:
       - chassis_bottom_link
       - chassis_top_link

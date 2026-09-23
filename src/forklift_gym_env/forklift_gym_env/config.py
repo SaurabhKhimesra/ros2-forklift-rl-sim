@@ -1,10 +1,9 @@
 """Typed, validated configuration.
 
-The old configuration was a bare ``dict`` read straight out of YAML: a typo in a
-key silently did nothing, a typo in a *value* blew up hundreds of lines later
-inside the training loop, and nothing was range-checked. Here every section is a
-dataclass, unknown keys are rejected at load time, and values are validated
-before a simulator is ever started.
+Every section is a dataclass. Unknown keys are rejected at load time with the
+valid names listed, and values are range-checked before a simulator is started,
+so a typo fails immediately rather than doing nothing or surfacing hundreds of
+lines later inside the training loop.
 """
 
 from __future__ import annotations
@@ -178,7 +177,6 @@ class GazeboConfig:
     pallet_entity: str = "pallet"
     pallet_model: str = "pallet/model.sdf"
     spawn_z: float = 0.30
-    controllers: list[str] = field(default_factory=lambda: ["joint_broad", "fork_joint_controller"])
     collision_links: list[str] = field(default_factory=list)
     launch_gui: bool = False
     gazebo_verbose: bool = False

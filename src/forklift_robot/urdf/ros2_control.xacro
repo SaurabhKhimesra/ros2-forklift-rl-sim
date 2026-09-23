@@ -52,8 +52,7 @@
         <plugin name="gazebo_ros2_control" filename="libgazebo_ros2_control.so">
             <robot_param>robot_description</robot_param>
             <robot_param_node>robot_state_publisher</robot_param_node>
-            <parameters>$(find forklift_robot)/my_controllers.yaml</parameters>
-            <!-- <parameters>$(find forklift_robot)/config/my_controllers.yaml</parameters> -->
+            <parameters>$(find forklift_robot)/config/my_controllers.yaml</parameters>
         </plugin>
     </gazebo>
 

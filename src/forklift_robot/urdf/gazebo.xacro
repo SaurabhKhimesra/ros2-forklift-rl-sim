@@ -154,41 +154,10 @@
     </gazebo> -->
 
 
-    <!-- Control plugins from another video -->
-    <!-- <xacro:property name="chassis_bottom_width" value="1.115" />
-    <xacro:property name="back_wheel_thickness" value="0.221" /> Made up number TODO: tune this parameter
-    <xacro:property name="back_wheel_radius" value="0.221" />
-
-    <xacro:property name="front_wheel_radius" value="0.30" />
-    <xacro:property name="front_wheel_thickness" value="0.23" /> Made up number TODO: tune this parameter -->
-
-     <!-- to test run: $ros2 run teleop_twist_keyboard teleop_twist_keyboard  -->
-    <!-- Refer to https://classic.gazebosim.org/tutorials?tut=ros_gzplugins for diff_drive's parameters -->
-    <gazebo>
-        <plugin name="diff_drive" filename="libgazebo_ros_diff_drive.so">
-
-            <!-- Wheel Information -->
-            <left_joint>left_wheel_joint</left_joint>
-            <right_joint>right_wheel_joint</right_joint>
-            <wheel_separation>${chassis_bottom_width}</wheel_separation>
-            <!-- <wheel_separation>0.35</wheel_separation> -->
-            <wheel_diameter>${front_wheel_radius * 2}</wheel_diameter>
-
-
-            <!-- Limits -->
-            <max_wheel_torque>200</max_wheel_torque>
-            <max_wheel_acceleration>10.0</max_wheel_acceleration>
-
-            
-            <!-- Output -->
-            <odometry_frame>odom</odometry_frame>
-            <robot_base_frame>base_link</robot_base_frame>
-
-            <publish_odom>true</publish_odom>
-            <publish_odom_tf>true</publish_odom_tf>
-            <publish_wheel_tf>true</publish_wheel_tf>
-
-        </plugin>
-    </gazebo>
+    <!-- The wheels are driven through ros2_control (see ros2_control.xacro and
+         config/my_controllers.yaml), so there is deliberately no
+         gazebo_ros_diff_drive plugin here. Running both would give two
+         controllers writing the same wheel joints and two publishers on /odom
+         and the odom->base_link transform. -->
 
 </robot>
