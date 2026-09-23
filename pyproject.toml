@@ -7,10 +7,7 @@ testpaths = ["src/forklift_gym_env/forklift_gym_env/tests"]
 pythonpath = ["src/forklift_gym_env"]
 addopts = "-q --strict-markers --strict-config"
 filterwarnings = ["error::DeprecationWarning:forklift_gym_env.*"]
-markers = [
-    "slow: takes more than a couple of seconds",
-    "ros: requires a sourced ROS 2 workspace (skipped by default)",
-]
+markers = ["ros: requires a sourced ROS 2 workspace"]
 
 [tool.ruff]
 line-length = 100
@@ -30,4 +27,4 @@ ignore = [
 
 [tool.coverage.run]
 source = ["forklift_gym_env"]
-omit = ["*/tests/*", "*/backends/gazebo.py"]  # gazebo needs ROS; covered by the ros marker
+omit = ["*/tests/*", "*/backends/gazebo.py"]  # needs a sourced ROS 2 workspace

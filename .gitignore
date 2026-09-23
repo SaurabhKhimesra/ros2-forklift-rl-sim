@@ -13,11 +13,7 @@ venv/
 
 # --- training artefacts ---
 runs/
-experiments/
 *.pt
-*.pkl
-logs_tensorboard/
-sb3_tensorboard/
 
 # --- tooling ---
 .pytest_cache/
@@ -27,7 +23,7 @@ htmlcov/
 .vscode/
 .idea/
 
-# --- editor detritus (a vim swap file was committed to the original repo) ---
+# --- editor detritus ---
 *.swp
 *.swo
 *~
