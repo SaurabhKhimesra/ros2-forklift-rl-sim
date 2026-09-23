@@ -1,10 +1,10 @@
 """The contract every simulator backend implements.
 
-Splitting the simulator out from the Gym environment is the single biggest
-structural change in this rewrite. The environment, the observation builder, the
-reward terms and the RL code now depend only on :class:`WorldState`, so all of
-them can be exercised at thousands of steps per second against the kinematic
-backend and unit-tested in CI with no ROS installed at all.
+The environment, the observation builder, the reward terms and the RL code
+depend only on :class:`WorldState` and :class:`DriveCommand`, never on a
+simulator. That is what lets all of them run at tens of thousands of steps per
+second against the kinematic backend, and be unit-tested in CI with no ROS
+installed at all.
 """
 
 from __future__ import annotations

@@ -1,15 +1,23 @@
 # syntax=docker/dockerfile:1
 #
-# Layered so that dependency installation is cached and a code change rebuilds
-# in seconds. The previous Dockerfile COPY'd the whole repo before installing
-# anything (so every edit reinstalled everything), left both dependency installs
-# commented out (so the image did not actually work), and used `sh`-only `source`
-# lines in RUN steps that had no effect on later layers.
+# Layered so dependency installation is cached and a code edit rebuilds only the
+# last stage. Note SHELL bash -lc: `source` is not available in the default sh,
+# and a `source` in one RUN step does not carry into the next.
 #
-#   docker build -t forklift .
+#   docker build -t forklift .                     # ROS 2 + Gazebo
+#   docker build --target lite -t forklift-lite .  # fast sim only, no ROS
 #   docker run -it --rm --net=host \
 #       -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
 #       -v "$PWD":/ws -w /ws forklift
+
+# --- a slim image for CI / pure-python work, no ROS --------------------------
+FROM python:3.11-slim AS lite
+ENV PYTHONUNBUFFERED=1 PYTHONPATH=/ws/src/forklift_gym_env
+WORKDIR /ws
+COPY requirements.txt requirements-viz.txt requirements-dev.txt ./
+RUN pip install --no-cache-dir -r requirements-dev.txt
+COPY . /ws
+CMD ["python", "-m", "pytest"]
 
 FROM osrf/ros:humble-desktop AS base
 SHELL ["/bin/bash", "-lc"]
@@ -50,15 +58,6 @@ RUN echo 'source /opt/ros/humble/setup.bash'            >> /root/.bashrc \
 
 # Gazebo runs headless by default; `make sim-gui` needs an X socket mounted in.
 ENV GAZEBO_MODEL_PATH=/ws/src/forklift_gym_env/models:${GAZEBO_MODEL_PATH} \
-    GAZEBO_PLUGIN_PATH=/ws/build/ros_gazebo_plugins:${GAZEBO_PLUGIN_PATH}
+    GAZEBO_PLUGIN_PATH=/ws/install/ros_gazebo_plugins/lib:${GAZEBO_PLUGIN_PATH}
 
 CMD ["bash"]
-
-# --- a slim image for CI / pure-python work, no ROS --------------------------
-FROM python:3.11-slim AS lite
-ENV PYTHONUNBUFFERED=1 PYTHONPATH=/ws/src/forklift_gym_env
-WORKDIR /ws
-COPY requirements.txt requirements-viz.txt requirements-dev.txt ./
-RUN pip install --no-cache-dir -r requirements-dev.txt
-COPY . /ws
-CMD ["python", "-m", "pytest"]

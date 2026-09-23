@@ -1,9 +1,7 @@
 """Bring up Gazebo with the forklift and a pallet, ready for training.
 
-Replaces six overlapping launch files (``demo_launch``, ``gazebo_launch``,
-``ros2Control_gazebo_launch``, ``rviz_launch`` and two ``dev_*`` variants) that
-differed only in which lines were commented out. One launch file, arguments for
-the differences.
+One launch file; the variants that would otherwise be separate copies are
+launch arguments.
 
     ros2 launch forklift_robot forklift_sim.launch.py            # headless
     ros2 launch forklift_robot forklift_sim.launch.py gui:=true rviz:=true
@@ -39,9 +37,8 @@ def generate_launch_description() -> LaunchDescription:
 
     # Gazebo needs to find the pallet mesh. The collision plugin is discovered
     # through the <gazebo_ros plugin_path=...> export in ros_gazebo_plugins'
-    # package.xml, but exporting it here too means the launch works even when
-    # that hook is not picked up. The old Makefile did this with an absolute
-    # path to one developer's home directory.
+    # package.xml; setting it here too means the launch still works when that
+    # hook is not picked up.
     _prepend_env("GAZEBO_MODEL_PATH", os.path.join(env_share, "models"))
     _prepend_env(
         "GAZEBO_PLUGIN_PATH",

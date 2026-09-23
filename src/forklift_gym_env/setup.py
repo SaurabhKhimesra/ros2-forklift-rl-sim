@@ -1,13 +1,10 @@
 """Package definition for the forklift_gym_env ROS 2 (ament_python) package.
 
-Two problems with the previous version are fixed here:
-
-* ``packages=[package_name]`` declared only the top-level package, so
-  ``forklift_gym_env.envs``, ``.rl`` and the rest were never installed. It
-  happened to work under ``colcon build --symlink-install`` -- and only that.
-* The ``config/`` directory was commented out of ``data_files``, which is why
-  every training script hard-coded a path into the ``build/`` scratch directory.
-  The configs are installed properly now and located through the ament index.
+Note ``find_packages()`` rather than a hand-written package list: naming only
+the top-level package leaves ``.envs``, ``.rl`` and the rest uninstalled, which
+still works under ``colcon build --symlink-install`` and nowhere else. The
+``config/``, ``worlds/`` and ``models/`` trees are mirrored into ``share/`` so
+:mod:`forklift_gym_env.paths` can find them through the ament index.
 """
 
 from pathlib import Path
@@ -60,10 +57,7 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            # One entry point, one CLI. The previous setup declared entry points
-            # for `forklift_gym_env.rl.DDPG_HER.train_HER_DDPG` and
-            # `forklift_gym_env.rl.DDPG.DDPG_openai`, neither of which exists in
-            # the repository -- both `make` targets failed with ImportError.
+            # One entry point; the subcommands live behind it in cli.py.
             f"forklift = {PACKAGE}.cli:main",
         ],
     },

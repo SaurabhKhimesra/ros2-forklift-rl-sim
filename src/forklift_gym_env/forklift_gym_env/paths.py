@@ -1,11 +1,9 @@
 """Locating packaged data files.
 
-The old code hard-coded ``'build/forklift_gym_env/forklift_gym_env/config/...'``
-in three separate training scripts, so everything only worked when launched from
-exactly one directory -- and it read out of ``build/``, a colcon scratch
-directory, rather than the installed share path. The configs are now installed
-properly and found through the ament index, with a source-tree fallback so the
-package also works as a plain pip install with no ROS present.
+Configs, worlds and models are installed into ``share/forklift_gym_env`` and
+found through the ament index, with a source-tree fallback so the package also
+works as a plain pip install with no ROS present. Nothing here reads out of
+``build/``: that is a colcon scratch directory, not a search path.
 """
 
 from __future__ import annotations

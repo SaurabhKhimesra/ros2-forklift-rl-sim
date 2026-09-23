@@ -1,9 +1,9 @@
 """Command-line interface.
 
 Runnable three ways -- ``python -m forklift_gym_env``, the installed
-``forklift`` script, or ``ros2 run forklift_gym_env forklift`` -- because the old
-setup insisted the training scripts were "not meant to be run with plain python",
-which made them impossible to debug or profile outside a ROS shell.
+``forklift`` script, or ``ros2 run forklift_gym_env forklift``. The first of
+those is the one that matters: it means the kinematic backend can be debugged
+and profiled with ordinary Python tooling, outside a sourced ROS shell.
 """
 
 from __future__ import annotations

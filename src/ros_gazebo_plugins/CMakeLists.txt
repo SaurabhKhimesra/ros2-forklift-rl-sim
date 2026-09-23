@@ -4,11 +4,9 @@ project(ros_gazebo_plugins)
 # Builds libros_collision_detection.so, a Gazebo sensor plugin that republishes
 # per-link contact state on /collision_detection/<link_name>.
 #
-# Cleaned up from the original, which carried ~30 lines of commented-out
-# alternatives and installed the library to lib/${PROJECT_NAME} while the
-# package.xml told gazebo_ros to look in lib/ -- so Gazebo could not find it
-# without GAZEBO_PLUGIN_PATH being exported by hand (the old Makefile did that
-# with an absolute path to one developer's home directory).
+# The install destination below has to agree with the <gazebo_ros
+# plugin_path="${prefix}/../../lib"/> export in package.xml, or Gazebo will not
+# find the library without GAZEBO_PLUGIN_PATH being set by hand.
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)

@@ -1,10 +1,11 @@
 """Replay buffers.
 
-The previous buffer was a class named ``ReplayBuffer`` whose docstring claimed
-"Hindsight Experience Replay implementation" and whose ``commit_append`` --
-the method that was supposed to do the relabelling -- just copied the staged
-transitions across verbatim. There was no HER. This module provides a plain
-uniform buffer and a real ``future``-strategy HER buffer.
+A plain uniform buffer, and a ``future``-strategy Hindsight Experience Replay
+buffer that stores episodes whole, samples them length-weighted, and recomputes
+rewards and terminals against the relabelled goal. The tests construct episodes
+that never reach their goal and assert the HER buffer manufactures successes
+where the uniform one yields none -- worth pinning down, because a buffer that
+relabels nothing still trains, just badly.
 
 Both store ``float32`` numpy arrays and convert to torch only at sample time,
 which keeps a 400k-transition buffer at a few tens of megabytes.

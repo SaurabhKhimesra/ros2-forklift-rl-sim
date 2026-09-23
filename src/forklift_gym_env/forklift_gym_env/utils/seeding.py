@@ -12,11 +12,11 @@ import torch
 def seed_everything(seed: int, deterministic_torch: bool = False) -> np.random.Generator:
     """Seed python, numpy and torch, and return a dedicated ``Generator``.
 
-    Returning a ``Generator`` matters: the previous code seeded the *global*
-    numpy RNG and then used ``np.random.*`` everywhere, so the environment, the
-    replay buffer and the exploration noise all drew from one shared stream.
-    Any change to how often one of them sampled silently changed the others,
-    which makes a "reproducible" run reproducible only by accident.
+    Returning a ``Generator`` matters. Seeding the global numpy RNG and calling
+    ``np.random.*`` everywhere puts the environment, the replay buffer and the
+    exploration noise on one shared stream, so changing how often any one of
+    them samples silently shifts the others -- which makes a "reproducible" run
+    reproducible only by accident.
     """
     random.seed(seed)
     np.random.seed(seed)

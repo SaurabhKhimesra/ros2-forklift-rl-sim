@@ -35,11 +35,11 @@ from forklift_gym_env.geometry import Pose2D, wrap_angle
 class GoalSampler:
     """Samples start/goal pairs, optionally widening the distribution over time.
 
-    The original environment pinned the pallet at ``[6.0, 2.0]`` for every single
-    episode (the randomisation code was commented out). A policy trained that way
-    has no reason to learn "drive to the pallet" when "drive to (6, 2)" is
-    simpler and scores identically -- and it will not transfer to any other
-    pallet position.
+    The pallet moves every episode. Pinning it at a fixed position gives a
+    policy no reason to learn "drive to the pallet" when "drive to (6, 2)" is
+    simpler and scores identically, and the resulting success rate measures a
+    memorised trajectory rather than the task. ``randomize: false`` is still
+    available for debugging a single geometry.
     """
 
     def __init__(self, cfg: EnvConfig) -> None:

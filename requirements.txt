@@ -1,17 +1,9 @@
-# Python dependencies for the RL side. Deliberately short.
+# Runtime dependencies for the RL side, and nothing else.
 #
-# The previous requirements.txt was a 150-line `pip freeze` of the original
-# developer's machine: it pinned every ROS message package (which pip cannot
-# install), pinned BOTH gym==0.21.0 and gymnasium==0.27.1 (mutually
-# incompatible APIs), and pinned numpy==1.23.3 against torch 1.13. Installing
-# it on a clean machine did not work.
-#
-# ROS 2 packages are declared in package.xml and installed with rosdep, which is
-# the correct tool for them. They are not listed here.
+# ROS 2 packages belong in package.xml where rosdep can act on them, so they are
+# not listed here. Figures and TensorBoard are optional: see requirements-viz.txt.
 
 numpy>=1.23
 gymnasium>=0.29
 torch>=2.0
 PyYAML>=6.0
-
-# --- reporting / figures (optional: pip install -r requirements-viz.txt) -----

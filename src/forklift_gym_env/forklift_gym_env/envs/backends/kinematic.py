@@ -1,13 +1,13 @@
 """A fast, ROS-free forklift simulator.
 
 Gazebo is the right tool for validating contact, sensors and controller
-dynamics, but it is a terrible tool for iterating on a reward function: one
-Gazebo step costs a service round-trip, a physics tick and a process
-synchronisation, and every ``reset()`` in the original code paid a hard-coded
-six seconds of ``sleep``. Tuning a reward that way takes days.
+dynamics, but a poor one for iterating on a reward function: every step costs a
+service round-trip, a physics tick and a process synchronisation, so evaluating
+a change over 60,000 steps costs hours. In practice you evaluate it over 200
+steps and guess.
 
-This backend integrates a unicycle model with the same interface, at roughly
-half a million steps per second on one core. The workflow it enables:
+This backend integrates a unicycle model behind the same interface, fast enough
+that the bottleneck moves back to the learning code. The workflow it enables:
 
 1. iterate on rewards, observations and hyperparameters here, in seconds;
 2. confirm the learning curve is healthy;

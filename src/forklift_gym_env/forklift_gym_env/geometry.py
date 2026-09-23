@@ -32,8 +32,8 @@ def wrap_angle(angle: float | np.ndarray) -> float | np.ndarray:
 def yaw_from_quaternion(x: float, y: float, z: float, w: float) -> float:
     """Extract the yaw (rotation about +Z) from a quaternion.
 
-    Avoids a dependency on ``tf_transformations``, which is a ROS-only package
-    and was previously imported inside a hot loop.
+    Done by hand rather than through ``tf_transformations``: that is a ROS-only
+    package, and this module has to stay importable without one.
     """
     siny_cosp = 2.0 * (w * z + x * y)
     cosy_cosp = 1.0 - 2.0 * (y * y + z * z)

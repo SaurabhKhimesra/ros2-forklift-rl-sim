@@ -1,11 +1,10 @@
 """Observation features, assembled from config.
 
-Previously the observation space was hard-coded to ``Box(shape=(2,))`` while the
-config advertised three feature groups, and most of the concatenation lines were
-commented out -- so what the agent actually saw had nothing to do with the YAML.
-Here each feature declares its own width and bounds, the vector is built by
-concatenating the features the config asks for, and the ``observation_space`` is
-derived from that same list. The two cannot drift apart.
+Each feature declares its own width and bounds. The observation vector is built
+by concatenating the features the config asks for, and ``observation_space`` is
+derived from that same list, so the space and the vector cannot drift apart --
+a feature that returns the wrong number of values raises immediately, naming
+itself, instead of quietly reshaping what the policy sees.
 """
 
 from __future__ import annotations

@@ -11,8 +11,6 @@
   <maintainer email="learningkhimesra@gmail.com">Saurabh Khimesra</maintainer>
   <license>Apache-2.0</license>
 
-  <!-- The previous package.xml declared no dependencies at all, so `rosdep install`
-       was a no-op and a fresh machine failed at import time instead of at setup time. -->
   <exec_depend>rclpy</exec_depend>
   <exec_depend>gazebo_msgs</exec_depend>
   <exec_depend>gazebo_ros</exec_depend>

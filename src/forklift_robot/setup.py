@@ -1,9 +1,10 @@
 """Package definition for the forklift_robot description package.
 
-Note ``find_packages()`` and the sub-directory layout under ``share/``: the
-previous version globbed ``urdf/*``, ``rviz/*`` and ``config/*`` all into the
-*same* flat share directory, so a ``forklift.urdf.xacro`` that ``<xacro:include>``s
-``lidar.xacro`` only resolved by accident of them landing side by side.
+``data_tree`` mirrors ``launch/``, ``urdf/``, ``rviz/`` and ``config/`` into
+``share/forklift_robot`` keeping their structure. Flattening them into one
+share directory happens to make ``<xacro:include filename="lidar.xacro"/>``
+resolve, by accident of the files landing side by side, and breaks the moment
+two packages disagree about a filename.
 """
 
 from pathlib import Path

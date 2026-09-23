@@ -1,18 +1,16 @@
 """Actor and critic networks.
 
-Two deliberate departures from the previous implementation:
+Two choices worth stating explicitly:
 
-* **No BatchNorm.** The old actor and critic both ended with a ``BatchNorm1d``
-  just before the output layer. In an off-policy actor-critic that is actively
-  harmful: the actor is evaluated with batch size 1 when acting and batch size
-  256 when training, so the normalisation statistics differ between the two, and
-  the critic's running statistics drift as the replay distribution shifts, which
-  makes the Q-target non-stationary on top of the usual bootstrapping. Where
-  normalisation helps, ``LayerNorm`` is the right choice -- it is batch-size
-  independent -- and it is available behind a flag.
+* **No BatchNorm.** In an off-policy actor-critic it is actively harmful: the
+  actor is evaluated at batch size 1 when acting and 256 when training, so the
+  normalisation statistics disagree between the two, and the critic's running
+  statistics drift as the replay distribution shifts, making the Q-target
+  non-stationary on top of the usual bootstrapping. Where normalisation helps,
+  ``LayerNorm`` is batch-size independent and is available behind a flag.
 
 * **Twin critics.** TD3's clipped double-Q is the cheapest available fix for
-  DDPG's well-known overestimation bias, and it is a single extra MLP.
+  DDPG's overestimation bias, and it costs one extra MLP.
 """
 
 from __future__ import annotations
